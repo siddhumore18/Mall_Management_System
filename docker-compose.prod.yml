@@ -1,0 +1,61 @@
+version: '3.8'
+
+# ================================================================
+# MegaMart Production Docker Compose — runs on AWS EC2
+# Images pulled from Amazon ECR (built by GitHub Actions CI/CD)
+# Database: Amazon RDS PostgreSQL (external — NOT in compose)
+# ================================================================
+
+services:
+  backend:
+    image: ${ECR_REGISTRY}/megamart-backend:latest
+    container_name: megamart-backend
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: postgres
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      APP_JWT_SECRET: ${APP_JWT_SECRET}
+      SEED_SAMPLE_DATA: "false"
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+    networks:
+      - megamart-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "awslogs"
+      options:
+        awslogs-group: "/megamart/backend"
+        awslogs-region: "${AWS_REGION}"
+        awslogs-stream-prefix: "backend"
+
+  frontend:
+    image: ${ECR_REGISTRY}/megamart-frontend:latest
+    container_name: megamart-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+    networks:
+      - megamart-net
+    logging:
+      driver: "awslogs"
+      options:
+        awslogs-group: "/megamart/frontend"
+        awslogs-region: "${AWS_REGION}"
+        awslogs-stream-prefix: "frontend"
+
+networks:
+  megamart-net:
+    driver: bridge
