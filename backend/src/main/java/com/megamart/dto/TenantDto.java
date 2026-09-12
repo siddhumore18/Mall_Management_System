@@ -16,6 +16,12 @@ public class TenantDto {
     private Integer maxUsers;
     private long activeStoresCount;
     private long activeUsersCount;
+    private String subscriptionStatus;
+    private String subscriptionStartDate;
+    private String subscriptionEndDate;
+    private long daysRemaining;
+    private String billingCycle;
+    private boolean isSubscriptionActive;
 
     public TenantDto() {}
 
@@ -33,14 +39,20 @@ public class TenantDto {
             this.maxUsers = plan.getMaxUsers();
         } else {
             this.planId = 1L;
-            this.planName = "Starter Plan";
-            this.planPrice = BigDecimal.valueOf(7999);
-            this.maxStores = 1;
+            this.planName = "Starter Boutique";
+            this.planPrice = BigDecimal.valueOf(4999);
+            this.maxStores = 2;
             this.maxUsers = 10;
         }
 
         this.activeStoresCount = activeStoresCount;
         this.activeUsersCount = activeUsersCount;
+        this.subscriptionStatus = tenant.getSubscriptionStatus();
+        this.subscriptionStartDate = tenant.getSubscriptionStartDate() != null ? tenant.getSubscriptionStartDate().toString() : "";
+        this.subscriptionEndDate = tenant.getSubscriptionEndDate() != null ? tenant.getSubscriptionEndDate().toString() : "";
+        this.daysRemaining = tenant.getDaysRemaining();
+        this.billingCycle = tenant.getBillingCycle();
+        this.isSubscriptionActive = tenant.isSubscriptionActive();
     }
 
     public Long getId() { return id; }
@@ -72,4 +84,22 @@ public class TenantDto {
 
     public long getActiveUsersCount() { return activeUsersCount; }
     public void setActiveUsersCount(long activeUsersCount) { this.activeUsersCount = activeUsersCount; }
+
+    public String getSubscriptionStatus() { return subscriptionStatus; }
+    public void setSubscriptionStatus(String subscriptionStatus) { this.subscriptionStatus = subscriptionStatus; }
+
+    public String getSubscriptionStartDate() { return subscriptionStartDate; }
+    public void setSubscriptionStartDate(String subscriptionStartDate) { this.subscriptionStartDate = subscriptionStartDate; }
+
+    public String getSubscriptionEndDate() { return subscriptionEndDate; }
+    public void setSubscriptionEndDate(String subscriptionEndDate) { this.subscriptionEndDate = subscriptionEndDate; }
+
+    public long getDaysRemaining() { return daysRemaining; }
+    public void setDaysRemaining(long daysRemaining) { this.daysRemaining = daysRemaining; }
+
+    public String getBillingCycle() { return billingCycle; }
+    public void setBillingCycle(String billingCycle) { this.billingCycle = billingCycle; }
+
+    public boolean isSubscriptionActive() { return isSubscriptionActive; }
+    public void setSubscriptionActive(boolean subscriptionActive) { isSubscriptionActive = subscriptionActive; }
 }

@@ -37,13 +37,17 @@ export const authApi = {
     email: string;
     password: string;
     planId: number;
+    billingCycle?: string;
   }) => {
     const res = await fetch(`${API_BASE}/auth/register-tenant`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    if (!res.ok) throw new Error('Registration failed');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Registration failed');
+    }
     return res.json();
   },
 
@@ -395,6 +399,22 @@ export const aiApi = {
   }
 };
 
+export const planApi = {
+  getPlans: async (): Promise<any[]> => {
+    try {
+      const res = await fetch(`${API_BASE}/plans`);
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Failed to fetch subscription plans:', e);
+    }
+    return [
+      { id: 1, name: 'Starter Boutique', maxStores: 2, maxUsers: 10, price: 4999 },
+      { id: 2, name: 'Standard Chain', maxStores: 10, maxUsers: 50, price: 14999 },
+      { id: 3, name: 'Enterprise Hyper-Scale', maxStores: 50, maxUsers: 500, price: 39999 }
+    ];
+  }
+};
+
 export const tenantApi = {
   getMe: async () => {
     const res = await fetch(`${API_BASE}/tenant/me`, { headers: getHeaders() });
@@ -402,30 +422,74 @@ export const tenantApi = {
     return res.json();
   },
 
-  upgradeSubscription: async (planId: number) => {
+  upgradeSubscription: async (planId: number, billingCycle?: string) => {
     const res = await fetch(`${API_BASE}/tenant/upgrade`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({ planId })
+      body: JSON.stringify({ planId, billingCycle: billingCycle || 'MONTHLY' })
     });
-    if (!res.ok) throw new Error('Subscription upgrade failed');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Subscription upgrade failed');
+    }
+    return res.json();
+  },
+
+  getUsers: async (): Promise<User[]> => {
+    const res = await fetch(`${API_BASE}/tenant/users`, { headers: getHeaders() });
+    if (!res.ok) return [];
     return res.json();
   },
 
   createTenantUser: async (userData: {
     name: string;
-    email?: string;
+    email: string;
     password?: string;
     pinCode?: string;
     role: string;
     storeId?: number;
-  }) => {
+  }): Promise<User> => {
     const res = await fetch(`${API_BASE}/tenant/users`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify(userData)
     });
-    if (!res.ok) throw new Error('User creation failed');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'User creation failed');
+    }
+    return res.json();
+  },
+
+  updateTenantUser: async (id: number, userData: {
+    name?: string;
+    password?: string;
+    pinCode?: string;
+    role?: string;
+    storeId?: number;
+    status?: string;
+  }): Promise<User> => {
+    const res = await fetch(`${API_BASE}/tenant/users/${id}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(userData)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'User update failed');
+    }
+    return res.json();
+  },
+
+  deleteTenantUser: async (id: number): Promise<{ success: boolean; message: string }> => {
+    const res = await fetch(`${API_BASE}/tenant/users/${id}`, {
+      method: 'DELETE',
+      headers: getHeaders()
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to de-provision user');
+    }
     return res.json();
   }
 };

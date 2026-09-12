@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useRetailStore } from '../store/useRetailStore';
-import { authApi, tenantApi } from '../services/api';
+import { authApi, tenantApi, planApi } from '../services/api';
+import { SubscriptionPlan } from '../types';
 import { 
   Building2, ArrowRight, ArrowLeft, ShieldCheck, 
-  Lock, AlertCircle, Sparkles, UserPlus, CheckCircle2, Shield
+  Lock, AlertCircle, Sparkles, UserPlus, CheckCircle2, Shield, Calendar, Clock
 } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
@@ -23,7 +24,22 @@ export const LoginPage: React.FC = () => {
   const [adminName, setAdminName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
-  const [planId, setPlanId] = useState(3);
+  const [planId, setPlanId] = useState(1);
+  const [billingCycle, setBillingCycle] = useState<'MONTHLY' | 'ANNUAL'>('MONTHLY');
+  const [availablePlans, setAvailablePlans] = useState<SubscriptionPlan[]>([
+    { id: 1, name: 'Starter Boutique', maxStores: 2, maxUsers: 10, price: 4999 },
+    { id: 2, name: 'Standard Chain', maxStores: 10, maxUsers: 50, price: 14999 },
+    { id: 3, name: 'Enterprise Hyper-Scale', maxStores: 50, maxUsers: 500, price: 39999 }
+  ]);
+
+  useEffect(() => {
+    planApi.getPlans().then(plans => {
+      if (plans && plans.length > 0) {
+        setAvailablePlans(plans);
+        setPlanId(plans[0].id);
+      }
+    }).catch(() => {});
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,7 +106,8 @@ export const LoginPage: React.FC = () => {
         adminName: adminName.trim(),
         email: regEmail.trim(),
         password: regPassword,
-        planId
+        planId,
+        billingCycle
       });
 
       await useRetailStore.getState().loadTenantData(res.user.tenantId, companyName.trim());
@@ -313,18 +330,67 @@ export const LoginPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] uppercase font-extrabold text-stone-600 mb-1">Subscription Tier</label>
+                    <label className="block text-[10px] uppercase font-extrabold text-stone-600 mb-1">Subscription Plan</label>
                     <select
                       value={planId}
                       onChange={(e) => setPlanId(Number(e.target.value))}
                       className="gold-input w-full text-xs font-bold"
                     >
-                      <option value={3}>Starter (2 Stores)</option>
-                      <option value={2}>Standard (10 Stores)</option>
-                      <option value={1}>Enterprise (50 Stores)</option>
+                      {availablePlans.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} (₹{Number(p.price).toLocaleString('en-IN')})
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
+
+                {/* Plan & Timeline Preview */}
+                {(() => {
+                  const selPlan = availablePlans.find(p => p.id === planId) || availablePlans[0];
+                  return (
+                    <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-3 space-y-2">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-extrabold text-amber-950 flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-amber-700" />
+                          Billing Timeline:
+                        </span>
+                        <div className="flex bg-amber-200/60 p-0.5 rounded-lg text-[10px] font-bold">
+                          <button
+                            type="button"
+                            onClick={() => setBillingCycle('MONTHLY')}
+                            className={`px-2 py-0.5 rounded-md cursor-pointer transition-all ${billingCycle === 'MONTHLY' ? 'bg-amber-900 text-amber-50 shadow-sm' : 'text-amber-950'}`}
+                          >
+                            Monthly (30 Days)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setBillingCycle('ANNUAL')}
+                            className={`px-2 py-0.5 rounded-md cursor-pointer transition-all ${billingCycle === 'ANNUAL' ? 'bg-amber-900 text-amber-50 shadow-sm' : 'text-amber-950'}`}
+                          >
+                            Annual (1 Year)
+                          </button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
+                        <div className="bg-white/80 p-1.5 rounded-lg border border-amber-100">
+                          <span className="text-stone-500 block">Outlets</span>
+                          <strong className="text-amber-950 font-bold">{selPlan?.maxStores || 2} Stores</strong>
+                        </div>
+                        <div className="bg-white/80 p-1.5 rounded-lg border border-amber-100">
+                          <span className="text-stone-500 block">Staff Seats</span>
+                          <strong className="text-amber-950 font-bold">{selPlan?.maxUsers || 10} Users</strong>
+                        </div>
+                        <div className="bg-white/80 p-1.5 rounded-lg border border-amber-100">
+                          <span className="text-stone-500 block">Pricing</span>
+                          <strong className="text-amber-950 font-bold">
+                            ₹{billingCycle === 'ANNUAL' ? (Number(selPlan?.price || 4999) * 10).toLocaleString('en-IN') : Number(selPlan?.price || 4999).toLocaleString('en-IN')}
+                          </strong>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 <div>
                   <label className="block text-[10px] uppercase font-extrabold text-stone-600 mb-1">Admin Work Email</label>

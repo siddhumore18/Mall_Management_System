@@ -15,6 +15,15 @@ export interface User {
   email: string;
   role: Role;
   pinCode?: string;
+  status?: 'ACTIVE' | 'INACTIVE';
+}
+
+export interface SubscriptionPlan {
+  id: number;
+  name: string;
+  maxStores: number;
+  maxUsers: number;
+  price: number;
 }
 
 export interface Store {

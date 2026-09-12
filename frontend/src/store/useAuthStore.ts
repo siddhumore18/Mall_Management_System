@@ -16,6 +16,12 @@ export interface TenantDetails {
   maxUsers: number;
   activeStoresCount: number;
   activeUsersCount: number;
+  subscriptionStatus?: string;
+  subscriptionStartDate?: string;
+  subscriptionEndDate?: string;
+  daysRemaining?: number;
+  billingCycle?: string;
+  isSubscriptionActive?: boolean;
 }
 
 interface AuthState {

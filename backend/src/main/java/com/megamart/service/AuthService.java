@@ -57,10 +57,14 @@ public class AuthService {
         }
 
         SubscriptionPlan plan = planRepository.findById(request.getPlanId() != null ? request.getPlanId() : 1L)
-                .orElseThrow(() -> new RuntimeException("Invalid subscription plan ID"));
+                .orElseThrow(() -> new RuntimeException("Invalid subscription plan ID: " + request.getPlanId()));
 
-        // 1. Create Tenant
-        Tenant tenant = new Tenant(request.getCompanyName(), plan, TenantStatus.ACTIVE);
+        String billingCycle = (request.getBillingCycle() != null && !request.getBillingCycle().isBlank())
+                ? request.getBillingCycle().toUpperCase() : "MONTHLY";
+        int durationMonths = "ANNUAL".equalsIgnoreCase(billingCycle) ? 12 : 1;
+
+        // 1. Create Tenant with Subscription Timeline
+        Tenant tenant = new Tenant(request.getCompanyName(), plan, TenantStatus.ACTIVE, billingCycle, durationMonths);
         Tenant savedTenant = tenantRepository.save(tenant);
 
         // 2. Create Initial Flagship Store

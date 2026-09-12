@@ -6,6 +6,7 @@ public class TenantRegistrationRequest {
     private String email;
     private String password;
     private Long planId;
+    private String billingCycle = "MONTHLY";
 
     public TenantRegistrationRequest() {}
 
@@ -15,6 +16,16 @@ public class TenantRegistrationRequest {
         this.email = email;
         this.password = password;
         this.planId = planId;
+        this.billingCycle = "MONTHLY";
+    }
+
+    public TenantRegistrationRequest(String companyName, String adminName, String email, String password, Long planId, String billingCycle) {
+        this.companyName = companyName;
+        this.adminName = adminName;
+        this.email = email;
+        this.password = password;
+        this.planId = planId;
+        this.billingCycle = billingCycle != null ? billingCycle : "MONTHLY";
     }
 
     public String getCompanyName() { return companyName; }
@@ -31,4 +42,7 @@ public class TenantRegistrationRequest {
 
     public Long getPlanId() { return planId; }
     public void setPlanId(Long planId) { this.planId = planId; }
+
+    public String getBillingCycle() { return billingCycle != null ? billingCycle : "MONTHLY"; }
+    public void setBillingCycle(String billingCycle) { this.billingCycle = billingCycle; }
 }

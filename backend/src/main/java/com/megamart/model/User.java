@@ -39,6 +39,9 @@ public class User {
     @Column(nullable = false)
     private Role role;
 
+    @Column(name = "status")
+    private String status = "ACTIVE";
+
     public User() {}
 
     public User(Long tenantId, Long storeId, String name, String email, String passwordHash, String pinCode, Role role) {
@@ -49,6 +52,18 @@ public class User {
         this.passwordHash = passwordHash;
         this.pinCode = pinCode;
         this.role = role;
+        this.status = "ACTIVE";
+    }
+
+    public User(Long tenantId, Long storeId, String name, String email, String passwordHash, String pinCode, Role role, String status) {
+        this.tenantId = tenantId;
+        this.storeId = storeId;
+        this.name = name;
+        this.email = email;
+        this.passwordHash = passwordHash;
+        this.pinCode = pinCode;
+        this.role = role;
+        this.status = status != null ? status : "ACTIVE";
     }
 
     public Long getId() { return id; }
@@ -74,4 +89,7 @@ public class User {
 
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }
+
+    public String getStatus() { return status != null ? status : "ACTIVE"; }
+    public void setStatus(String status) { this.status = status; }
 }

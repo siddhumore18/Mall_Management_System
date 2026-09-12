@@ -11,6 +11,7 @@ public class UserDto {
     private String email;
     private Role role;
     private String pinCode;
+    private String status;
 
     public UserDto() {}
 
@@ -22,6 +23,7 @@ public class UserDto {
         this.email = user.getEmail();
         this.role = user.getRole();
         this.pinCode = user.getPinCode();
+        this.status = user.getStatus();
     }
 
     public Long getId() { return id; }
@@ -44,4 +46,7 @@ public class UserDto {
 
     public String getPinCode() { return pinCode; }
     public void setPinCode(String pinCode) { this.pinCode = pinCode; }
+
+    public String getStatus() { return status != null ? status : "ACTIVE"; }
+    public void setStatus(String status) { this.status = status; }
 }

@@ -5,8 +5,8 @@ import { useRetailStore, StoreOutlet } from '../store/useRetailStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { BarChartWidget, AreaLineChartWidget, DonutChartWidget } from '../components/AnalyticsCharts';
 import { CustomerDirectoryView } from '../components/CustomerDirectoryView';
-import { analyticsApi, transactionApi, tenantApi } from '../services/api';
-import { AnalyticsData, Transaction, Product, Role } from '../types';
+import { analyticsApi, transactionApi, tenantApi, planApi } from '../services/api';
+import { AnalyticsData, Transaction, Product, Role, SubscriptionPlan } from '../types';
 import {
   TrendingUp, ShoppingBag, Store, Users, AlertTriangle,
   Download, ArrowUpRight, ArrowDownRight, CreditCard,
@@ -14,7 +14,7 @@ import {
   Receipt, FileText, Plus, MapPin, X,
   UserPlus, Package, Barcode, Tag, Lock, ClipboardList,
   Eye, Calendar, Clock, Shield, ArrowLeftRight, Gift, Percent, UserCog,
-  Printer, Trash2, Edit, Search, Check, Filter, AlertCircle, Sparkles, ChevronRight, Crown
+  Printer, Trash2, Edit, Search, Check, Filter, AlertCircle, Sparkles, ChevronRight, Crown, Key
 } from 'lucide-react';
 
 const initialAnalytics: AnalyticsData = {
@@ -24,7 +24,7 @@ const initialAnalytics: AnalyticsData = {
   growthRate: 0,
   averageOrderValue: 0,
   totalTransactions: 0,
-  totalStores: 0,
+  totalStores: 1,
   totalCustomers: 0,
   lowStockCount: 0,
   expiringSoonCount: 0,
@@ -39,6 +39,7 @@ interface EnterpriseUser {
   email: string;
   role: Role;
   storeName: string;
+  storeId?: number | null;
   status: 'ACTIVE' | 'INACTIVE';
   pinCode?: string;
 }
@@ -84,13 +85,25 @@ export const TenantAdminDashboardPage: React.FC = () => {
   const [msg, setMsg] = useState('');
 
   // ─── SUBSCRIPTION PLAN & QUOTA BOUNDARIES ───
-  const [currentPlan, setCurrentPlan] = useState<string>(tenantDetails?.planName || 'Enterprise Hyper-Scale');
-  const [maxStoresQuota, setMaxStoresQuota] = useState<number>(tenantDetails?.maxStores || 50);
-  const [maxUsersQuota, setMaxUsersQuota] = useState<number>(tenantDetails?.maxUsers || 500);
+  // ─── SUBSCRIPTION PLAN & QUOTA BOUNDARIES ───
+  const [currentPlan, setCurrentPlan] = useState<string>(tenantDetails?.planName || 'Starter Boutique');
+  const [maxStoresQuota, setMaxStoresQuota] = useState<number>(tenantDetails?.maxStores || 2);
+  const [maxUsersQuota, setMaxUsersQuota] = useState<number>(tenantDetails?.maxUsers || 10);
   const [isQuotaExceededModalOpen, setIsQuotaExceededModalOpen] = useState(false);
   const [quotaExceededReason, setQuotaExceededReason] = useState<{ title: string; current: number; max: number; type: 'STORES' | 'USERS' }>({
     title: '', current: 0, max: 0, type: 'STORES'
   });
+
+  // Subscription Plans & Upgrade Modal
+  const [availablePlans, setAvailablePlans] = useState<SubscriptionPlan[]>([
+    { id: 1, name: 'Starter Boutique', maxStores: 2, maxUsers: 10, price: 4999 },
+    { id: 2, name: 'Standard Chain', maxStores: 10, maxUsers: 50, price: 14999 },
+    { id: 3, name: 'Enterprise Hyper-Scale', maxStores: 50, maxUsers: 500, price: 39999 }
+  ]);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [upgradePlanId, setUpgradePlanId] = useState<number>(tenantDetails?.planId || 1);
+  const [upgradeBillingCycle, setUpgradeBillingCycle] = useState<'MONTHLY' | 'ANNUAL'>('MONTHLY');
+  const [isUpgrading, setIsUpgrading] = useState(false);
 
   // Fetch real tenant subscription data & analytics from API
   const refreshAnalytics = async () => {
@@ -120,8 +133,40 @@ export const TenantAdminDashboardPage: React.FC = () => {
     }
   };
 
+  const loadUsersFromApi = async () => {
+    try {
+      const apiUsers = await tenantApi.getUsers();
+      if (apiUsers && apiUsers.length > 0) {
+        setUsers(apiUsers.map(u => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          role: u.role,
+          storeName: outlets.find(o => o.id === u.storeId)?.name || 'Flagship Store',
+          storeId: u.storeId,
+          status: (u.status as 'ACTIVE' | 'INACTIVE') || 'ACTIVE',
+          pinCode: u.pinCode || '1234'
+        })));
+      }
+    } catch (e) {
+      console.warn('Failed to load users from backend:', e);
+    }
+  };
+
+  useEffect(() => {
+    planApi.getPlans().then(plans => {
+      if (plans && plans.length > 0) {
+        setAvailablePlans(plans);
+        if (tenantDetails?.planId) {
+          setUpgradePlanId(tenantDetails.planId);
+        }
+      }
+    }).catch(() => {});
+  }, []);
+
   useEffect(() => {
     refreshAnalytics();
+    loadUsersFromApi();
   }, [user?.tenantId]);
 
   // Store Outlets State managed by useRetailStore
@@ -129,22 +174,26 @@ export const TenantAdminDashboardPage: React.FC = () => {
   const [newStoreName, setNewStoreName] = useState('');
   const [newStoreCity, setNewStoreCity] = useState('');
 
-  // Users & Employee Provisioning (Real state from persistent storage, no dummy users)
-  const [users, setUsers] = useState<EnterpriseUser[]>(() => {
-    try {
-      const tenantKey = user?.tenantId ? `megamart_tenant_${user.tenantId}_users` : 'megamart_users';
-      const saved = localStorage.getItem(tenantKey);
-      if (saved) return JSON.parse(saved);
-    } catch (e) {}
-    return [];
-  });
+  // Users & Employee Provisioning (Real state from PostgreSQL, tenant admin sets credentials)
+  const [users, setUsers] = useState<EnterpriseUser[]>([]);
 
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('password123');
   const [newUserRole, setNewUserRole] = useState<Role>('CASHIER');
   const [newUserStore, setNewUserStore] = useState(outlets[0]?.name || 'Flagship Store');
   const [newUserPin, setNewUserPin] = useState('1234');
+
+  // Edit Employee & Reset Password Modal State
+  const [isEditUserOpen, setIsEditUserOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<EnterpriseUser | null>(null);
+  const [editUserName, setEditUserName] = useState('');
+  const [editUserRole, setEditUserRole] = useState<Role>('CASHIER');
+  const [editUserStoreId, setEditUserStoreId] = useState<number | undefined>(undefined);
+  const [editUserPin, setEditUserPin] = useState('1234');
+  const [editUserPassword, setEditUserPassword] = useState('');
+  const [editUserStatus, setEditUserStatus] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
 
   const [catalogSearch, setCatalogSearch] = useState('');
   const [catalogCategory, setCatalogCategory] = useState('ALL');
@@ -279,7 +328,7 @@ export const TenantAdminDashboardPage: React.FC = () => {
     setIsAddUserOpen(true);
   };
 
-  const handleAddUser = (e: React.FormEvent) => {
+  const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserName.trim() || !newUserEmail.trim()) return;
 
@@ -296,39 +345,137 @@ export const TenantAdminDashboardPage: React.FC = () => {
       return;
     }
 
-    const newUser: EnterpriseUser = {
-      id: Date.now(),
-      name: newUserName.trim(),
-      email: newUserEmail.trim(),
-      role: newUserRole,
-      storeName: newUserStore,
-      status: 'ACTIVE',
-      pinCode: newUserPin
-    };
+    const matchedStore = outlets.find(o => o.name === newUserStore);
 
-    tenantApi.createTenantUser({
-      name: newUser.name,
-      email: newUser.email,
-      password: 'password123',
-      pinCode: newUser.pinCode,
-      role: newUser.role
-    }).catch(() => {});
+    try {
+      const saved = await tenantApi.createTenantUser({
+        name: newUserName.trim(),
+        email: newUserEmail.trim(),
+        password: newUserPassword,
+        pinCode: newUserPin,
+        role: newUserRole,
+        storeId: matchedStore?.id
+      });
 
-    setUsers(prev => [...prev, newUser]);
-    setIsAddUserOpen(false);
-    setNewUserName(''); setNewUserEmail(''); setNewUserPin('1234');
-    setMsg(`Employee "${newUser.name}" provisioned! (${users.length + 1}/${maxUsersQuota} Seats)`);
-    setTimeout(() => setMsg(''), 4000);
+      const newUser: EnterpriseUser = {
+        id: saved.id,
+        name: saved.name,
+        email: saved.email,
+        role: saved.role,
+        storeName: newUserStore,
+        storeId: matchedStore?.id,
+        status: (saved.status as 'ACTIVE' | 'INACTIVE') || 'ACTIVE',
+        pinCode: saved.pinCode || newUserPin
+      };
+
+      setUsers(prev => [...prev, newUser]);
+      setIsAddUserOpen(false);
+      setNewUserName('');
+      setNewUserEmail('');
+      setNewUserPassword('password123');
+      setNewUserPin('1234');
+      setMsg(`Employee "${newUser.name}" provisioned with role ${newUser.role}! (${users.length + 1}/${maxUsersQuota} Seats)`);
+      setTimeout(() => setMsg(''), 4000);
+      refreshAnalytics();
+    } catch (err: any) {
+      setMsg(err?.message || 'Failed to provision employee.');
+      setTimeout(() => setMsg(''), 4000);
+    }
   };
 
-  const handleToggleUserStatus = (id: number) => {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, status: u.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE' } : u));
+  const handleOpenEditUser = (u: EnterpriseUser) => {
+    setEditingUser(u);
+    setEditUserName(u.name);
+    setEditUserRole(u.role);
+    setEditUserPin(u.pinCode || '1234');
+    setEditUserStoreId(u.storeId || outlets[0]?.id);
+    setEditUserPassword('');
+    setEditUserStatus(u.status);
+    setIsEditUserOpen(true);
   };
 
-  const handleDeleteUser = (id: number) => {
-    setUsers(prev => prev.filter(u => u.id !== id));
-    setMsg('Employee account de-provisioned.');
-    setTimeout(() => setMsg(''), 3000);
+  const handleSaveEditUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+
+    try {
+      await tenantApi.updateTenantUser(editingUser.id, {
+        name: editUserName.trim(),
+        role: editUserRole,
+        storeId: editUserStoreId,
+        pinCode: editUserPin,
+        password: editUserPassword.trim() ? editUserPassword.trim() : undefined,
+        status: editUserStatus
+      });
+
+      const updatedStoreName = outlets.find(o => o.id === editUserStoreId)?.name || editingUser.storeName;
+
+      setUsers(prev => prev.map(u => u.id === editingUser.id ? {
+        ...u,
+        name: editUserName.trim(),
+        role: editUserRole,
+        pinCode: editUserPin,
+        storeName: updatedStoreName,
+        storeId: editUserStoreId,
+        status: editUserStatus
+      } : u));
+
+      setIsEditUserOpen(false);
+      setMsg(`Credentials & role updated for "${editUserName.trim()}".`);
+      setTimeout(() => setMsg(''), 4000);
+    } catch (err: any) {
+      setMsg(err?.message || 'Failed to update user credentials.');
+      setTimeout(() => setMsg(''), 4000);
+    }
+  };
+
+  const handleToggleUserStatus = async (id: number) => {
+    const target = users.find(u => u.id === id);
+    if (!target) return;
+    const nextStatus = target.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+    try {
+      await tenantApi.updateTenantUser(id, { status: nextStatus });
+      setUsers(prev => prev.map(u => u.id === id ? { ...u, status: nextStatus } : u));
+      setMsg(`Employee status set to ${nextStatus}.`);
+      setTimeout(() => setMsg(''), 3000);
+    } catch (e: any) {
+      setMsg(e?.message || 'Failed to toggle status');
+      setTimeout(() => setMsg(''), 3000);
+    }
+  };
+
+  const handleDeleteUser = async (id: number) => {
+    const target = users.find(u => u.id === id);
+    if (!window.confirm(`Are you sure you want to de-provision employee "${target?.name || ''}"?`)) return;
+    try {
+      await tenantApi.deleteTenantUser(id);
+      setUsers(prev => prev.filter(u => u.id !== id));
+      setMsg('Employee account de-provisioned.');
+      setTimeout(() => setMsg(''), 3000);
+      refreshAnalytics();
+    } catch (e: any) {
+      setMsg(e?.message || 'Failed to de-provision employee.');
+      setTimeout(() => setMsg(''), 3000);
+    }
+  };
+
+  const handleUpgradePlan = async () => {
+    setIsUpgrading(true);
+    try {
+      const updated = await tenantApi.upgradeSubscription(upgradePlanId, upgradeBillingCycle);
+      setCurrentPlan(updated.planName);
+      setMaxStoresQuota(updated.maxStores);
+      setMaxUsersQuota(updated.maxUsers);
+      setTenantDetails(updated);
+      setIsUpgradeModalOpen(false);
+      setMsg(`🎉 Plan successfully upgraded to ${updated.planName}! Active until ${updated.subscriptionEndDate || 'next cycle'}.`);
+      setTimeout(() => setMsg(''), 6000);
+    } catch (err: any) {
+      setMsg(err?.message || 'Plan upgrade failed.');
+      setTimeout(() => setMsg(''), 4000);
+    } finally {
+      setIsUpgrading(false);
+    }
   };
 
   const handleAddSku = (e: React.FormEvent) => {
@@ -417,74 +564,94 @@ export const TenantAdminDashboardPage: React.FC = () => {
     const storesPercent = Math.min(100, Math.round((outlets.length / (maxStoresQuota || 1)) * 100));
     const usersPercent = Math.min(100, Math.round((users.length / (maxUsersQuota || 1)) * 100));
     const companyDisplay = tenantDetails?.companyName || user?.name || 'Tenant HQ';
+    const isExpired = tenantDetails?.isSubscriptionActive === false || (tenantDetails?.subscriptionStatus === 'EXPIRED');
+    const daysLeft = tenantDetails?.daysRemaining ?? 30;
 
     return (
-      <div className="bg-gradient-to-r from-amber-900 via-amber-950 to-stone-900 text-white p-4 rounded-2xl shadow-md border border-amber-300/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-md">
-            <Crown className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-white text-sm">{currentPlan}</span>
-              <span className="gold-badge text-[9px] bg-amber-500 text-white border-none">ACTIVE REAL SUBSCRIPTION</span>
+      <div className="space-y-3">
+        {/* Expired Subscription Alert if applicable */}
+        {isExpired && (
+          <div className="bg-rose-600 text-white p-3 rounded-2xl shadow-lg flex items-center justify-between animate-pulse">
+            <div className="flex items-center gap-2 text-xs font-bold">
+              <AlertTriangle className="w-5 h-5 text-amber-200" />
+              <span>Subscription Expired! Access to employee provisioning and branch expansion is paused. Please renew to keep your mall operating.</span>
             </div>
-            <p className="text-[11px] text-amber-200/90 font-medium">Bound to {companyDisplay} • Tenant ID #{user?.tenantId || 1}</p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-4 text-xs font-mono w-full md:w-auto">
-          {/* Outlets Progress */}
-          <div className="bg-stone-800/80 p-2.5 rounded-xl border border-amber-300/30 flex-1 md:flex-initial min-w-[140px]">
-            <div className="flex justify-between text-[10px] text-amber-200 font-bold mb-1">
-              <span>OUTLETS:</span>
-              <span className={outlets.length >= maxStoresQuota ? 'text-rose-400 font-black' : 'text-emerald-400'}>
-                {outlets.length} / {maxStoresQuota >= 999 ? '∞' : maxStoresQuota}
-              </span>
-            </div>
-            <div className="w-full bg-stone-700 h-1.5 rounded-full overflow-hidden">
-              <div className={`h-full ${outlets.length >= maxStoresQuota ? 'bg-rose-500' : 'bg-amber-400'}`} style={{ width: `${storesPercent}%` }}></div>
-            </div>
-          </div>
-
-          {/* Users Progress */}
-          <div className="bg-stone-800/80 p-2.5 rounded-xl border border-amber-300/30 flex-1 md:flex-initial min-w-[140px]">
-            <div className="flex justify-between text-[10px] text-amber-200 font-bold mb-1">
-              <span>USER SEATS:</span>
-              <span className={users.length >= maxUsersQuota ? 'text-rose-400 font-black' : 'text-emerald-400'}>
-                {users.length} / {maxUsersQuota >= 999 ? '∞' : maxUsersQuota}
-              </span>
-            </div>
-            <div className="w-full bg-stone-700 h-1.5 rounded-full overflow-hidden">
-              <div className={`h-full ${users.length >= maxUsersQuota ? 'bg-rose-500' : 'bg-amber-400'}`} style={{ width: `${usersPercent}%` }}></div>
-            </div>
-          </div>
-
-          {/* Plan Governance Info */}
-          <div className="flex items-center gap-2">
             <button
-              onClick={async () => {
-                try {
-                  const updated = await tenantApi.upgradeSubscription(3); // Upgrade to Enterprise Plan
-                  setCurrentPlan(updated.planName);
-                  setMaxStoresQuota(updated.maxStores);
-                  setMaxUsersQuota(updated.maxUsers);
-                  setTenantDetails(updated);
-                  setMsg(`🎉 REAL SUBSCRIPTION UPGRADED! Tenant is now on ${updated.planName}!`);
-                  setTimeout(() => setMsg(''), 5000);
-                } catch (err: any) {
-                  setCurrentPlan('Enterprise Chain');
-                  setMaxStoresQuota(100);
-                  setMaxUsersQuota(1000);
-                  setMsg('🎉 SUBSCRIPTION UPGRADED TO ENTERPRISE CHAIN!');
-                  setTimeout(() => setMsg(''), 5000);
-                }
-              }}
-              className="bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-extrabold px-4 py-2 rounded-xl cursor-pointer shadow-md transition-colors flex items-center gap-1.5"
+              onClick={() => setIsUpgradeModalOpen(true)}
+              className="bg-white text-rose-700 hover:bg-amber-100 text-xs font-black px-4 py-1.5 rounded-xl cursor-pointer shadow-md shrink-0"
             >
-              <Sparkles className="w-4 h-4 text-amber-200" />
-              <span>Upgrade Plan Real-Time</span>
+              Renew Immediately
             </button>
+          </div>
+        )}
+
+        <div className="bg-gradient-to-r from-amber-900 via-amber-950 to-stone-900 text-white p-4 rounded-2xl shadow-md border border-amber-300/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl ${isExpired ? 'bg-rose-600' : 'bg-amber-500'} text-white flex items-center justify-center font-black text-sm shrink-0 shadow-md`}>
+              <Crown className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-white text-sm">{currentPlan}</span>
+                <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full ${isExpired ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'}`}>
+                  {isExpired ? 'EXPIRED' : 'ACTIVE SUBSCRIPTION'}
+                </span>
+                <span className="text-[10px] text-amber-300 font-mono bg-amber-950/60 px-2 py-0.5 rounded border border-amber-400/30">
+                  {tenantDetails?.billingCycle || 'MONTHLY'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-[11px] text-amber-200/90 font-medium mt-0.5">
+                <span>{companyDisplay} (ID #{user?.tenantId || 1})</span>
+                <span>•</span>
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-amber-300" />
+                  {isExpired ? 'Expired on' : 'Renews on'}: <strong className="text-white font-mono">{tenantDetails?.subscriptionEndDate || '2026-10-12'}</strong>
+                </span>
+                <span>•</span>
+                <span className={`font-black font-mono ${daysLeft <= 3 ? 'text-rose-400' : 'text-amber-300'}`}>
+                  {daysLeft} Days Remaining
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4 text-xs font-mono w-full md:w-auto">
+            {/* Outlets Progress */}
+            <div className="bg-stone-800/80 p-2.5 rounded-xl border border-amber-300/30 flex-1 md:flex-initial min-w-[140px]">
+              <div className="flex justify-between text-[10px] text-amber-200 font-bold mb-1">
+                <span>OUTLETS:</span>
+                <span className={outlets.length >= maxStoresQuota ? 'text-rose-400 font-black' : 'text-emerald-400'}>
+                  {outlets.length} / {maxStoresQuota >= 999 ? '∞' : maxStoresQuota}
+                </span>
+              </div>
+              <div className="w-full bg-stone-700 h-1.5 rounded-full overflow-hidden">
+                <div className={`h-full ${outlets.length >= maxStoresQuota ? 'bg-rose-500' : 'bg-amber-400'}`} style={{ width: `${storesPercent}%` }}></div>
+              </div>
+            </div>
+
+            {/* Users Progress */}
+            <div className="bg-stone-800/80 p-2.5 rounded-xl border border-amber-300/30 flex-1 md:flex-initial min-w-[140px]">
+              <div className="flex justify-between text-[10px] text-amber-200 font-bold mb-1">
+                <span>USER SEATS:</span>
+                <span className={users.length >= maxUsersQuota ? 'text-rose-400 font-black' : 'text-emerald-400'}>
+                  {users.length} / {maxUsersQuota >= 999 ? '∞' : maxUsersQuota}
+                </span>
+              </div>
+              <div className="w-full bg-stone-700 h-1.5 rounded-full overflow-hidden">
+                <div className={`h-full ${users.length >= maxUsersQuota ? 'bg-rose-500' : 'bg-amber-400'}`} style={{ width: `${usersPercent}%` }}></div>
+              </div>
+            </div>
+
+            {/* Plan Governance Info */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsUpgradeModalOpen(true)}
+                className="bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-extrabold px-4 py-2 rounded-xl cursor-pointer shadow-md transition-colors flex items-center gap-1.5"
+              >
+                <Sparkles className="w-4 h-4 text-amber-200" />
+                <span>Manage Plan & Timeline</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -778,13 +945,22 @@ export const TenantAdminDashboardPage: React.FC = () => {
                   </button>
                 </td>
                 <td className="p-3.5 text-center">
-                  <button
-                    onClick={() => handleDeleteUser(u.id)}
-                    className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                    title="De-provision Employee"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex items-center justify-center gap-1.5">
+                    <button
+                      onClick={() => handleOpenEditUser(u)}
+                      className="p-1.5 text-amber-800 hover:bg-amber-100 rounded-lg transition-colors cursor-pointer"
+                      title="Edit Credentials & Reset Password"
+                    >
+                      <Key className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteUser(u.id)}
+                      className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                      title="De-provision Employee"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -1237,17 +1413,31 @@ export const TenantAdminDashboardPage: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[10px] uppercase font-extrabold text-stone-500 mb-1">Security PIN (4 Digits)</label>
-                <input
-                  type="password"
-                  value={newUserPin}
-                  onChange={e => setNewUserPin(e.target.value)}
-                  placeholder="1234"
-                  maxLength={4}
-                  className="gold-input w-full font-mono text-center tracking-widest font-bold"
-                  required
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] uppercase font-extrabold text-stone-500 mb-1">Initial Password</label>
+                  <input
+                    type="password"
+                    value={newUserPassword}
+                    onChange={e => setNewUserPassword(e.target.value)}
+                    placeholder="Set employee password"
+                    className="gold-input w-full font-mono"
+                    required
+                    minLength={6}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase font-extrabold text-stone-500 mb-1">Security PIN (4 Digits)</label>
+                  <input
+                    type="password"
+                    value={newUserPin}
+                    onChange={e => setNewUserPin(e.target.value)}
+                    placeholder="1234"
+                    maxLength={4}
+                    className="gold-input w-full font-mono text-center tracking-widest font-bold"
+                    required
+                  />
+                </div>
               </div>
 
               <div className="flex gap-2 pt-3 border-t border-amber-100">
@@ -1267,6 +1457,240 @@ export const TenantAdminDashboardPage: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL 1B: EDIT EMPLOYEE CREDENTIALS & RESET PASSWORD ─── */}
+      {isEditUserOpen && editingUser && (
+        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-slide-up">
+          <div className="gold-card max-w-md w-full p-6 space-y-4 bg-white border-2 border-amber-400 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-amber-200 pb-2">
+              <h3 className="font-extrabold text-amber-950 text-sm flex items-center gap-1.5">
+                <Key className="w-4 h-4 text-amber-700" />
+                <span>Edit Credentials & Permissions: {editingUser.name}</span>
+              </h3>
+              <button onClick={() => setIsEditUserOpen(false)} className="text-stone-400 hover:text-stone-700 font-bold cursor-pointer">✕</button>
+            </div>
+
+            <form onSubmit={handleSaveEditUser} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-[10px] uppercase font-extrabold text-stone-500 mb-1">Employee Name</label>
+                <input
+                  value={editUserName}
+                  onChange={e => setEditUserName(e.target.value)}
+                  className="gold-input w-full font-bold"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] uppercase font-extrabold text-stone-500 mb-1">Role Assignment</label>
+                  <select value={editUserRole} onChange={e => setEditUserRole(e.target.value as Role)} className="gold-input w-full font-bold cursor-pointer">
+                    <option value="CASHIER">CASHIER</option>
+                    <option value="STORE_MANAGER">STORE MANAGER</option>
+                    <option value="ACCOUNTANT">ACCOUNTANT</option>
+                    <option value="CUSTOMER_SERVICE">CUSTOMER SERVICE</option>
+                    <option value="INVENTORY_CLERK">INVENTORY CLERK</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase font-extrabold text-stone-500 mb-1">Assigned Store</label>
+                  <select
+                    value={editUserStoreId || outlets[0]?.id}
+                    onChange={e => setEditUserStoreId(Number(e.target.value))}
+                    className="gold-input w-full font-bold cursor-pointer"
+                  >
+                    {outlets.map(o => (
+                      <option key={o.id} value={o.id}>{o.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] uppercase font-extrabold text-stone-500 mb-1">Security PIN</label>
+                  <input
+                    type="password"
+                    value={editUserPin}
+                    onChange={e => setEditUserPin(e.target.value)}
+                    maxLength={4}
+                    className="gold-input w-full font-mono text-center tracking-widest font-bold"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase font-extrabold text-stone-500 mb-1">Status</label>
+                  <select
+                    value={editUserStatus}
+                    onChange={e => setEditUserStatus(e.target.value as 'ACTIVE' | 'INACTIVE')}
+                    className="gold-input w-full font-bold cursor-pointer"
+                  >
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="INACTIVE">INACTIVE (DISABLED)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase font-extrabold text-stone-500 mb-1">
+                  Reset Password <span className="text-stone-400 font-normal">(Leave blank to keep unchanged)</span>
+                </label>
+                <input
+                  type="password"
+                  value={editUserPassword}
+                  onChange={e => setEditUserPassword(e.target.value)}
+                  placeholder="Enter new password to reset"
+                  className="gold-input w-full font-mono"
+                  minLength={6}
+                />
+              </div>
+
+              <div className="flex gap-2 pt-3 border-t border-amber-100">
+                <button
+                  type="button"
+                  onClick={() => setIsEditUserOpen(false)}
+                  className="w-1/2 bg-stone-100 hover:bg-stone-200 text-stone-700 py-2.5 rounded-xl font-bold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="w-1/2 gold-button-primary py-2.5 rounded-xl font-bold cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Update Credentials</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL 1C: SUBSCRIPTION TIMELINE & PLAN UPGRADE / RENEWAL ─── */}
+      {isUpgradeModalOpen && (
+        <div className="fixed inset-0 bg-stone-900/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-slide-up">
+          <div className="gold-card max-w-lg w-full p-6 space-y-4 bg-white border-2 border-amber-400 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-amber-200 pb-2">
+              <div>
+                <h3 className="font-extrabold text-amber-950 text-sm flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-amber-700" />
+                  <span>Manage Subscription & Billing Timeline</span>
+                </h3>
+                <p className="text-[11px] text-stone-500">Scale store quota and employee seats across your retail network</p>
+              </div>
+              <button onClick={() => setIsUpgradeModalOpen(false)} className="text-stone-400 hover:text-stone-700 font-bold cursor-pointer">✕</button>
+            </div>
+
+            {/* Current Timeline Card */}
+            <div className="bg-amber-50/90 border border-amber-200 rounded-xl p-3 flex justify-between items-center text-xs">
+              <div>
+                <span className="text-[10px] text-stone-500 font-bold uppercase block">Current Active Plan</span>
+                <span className="font-black text-amber-950 text-sm">{currentPlan}</span>
+                <span className="text-[10px] text-stone-600 block mt-0.5">
+                  Renews: <strong className="text-amber-900 font-mono">{tenantDetails?.subscriptionEndDate || '2026-10-12'}</strong> ({tenantDetails?.daysRemaining ?? 30} days left)
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] text-stone-500 font-bold uppercase block">Billing Cycle</span>
+                <span className="gold-badge text-[10px]">{tenantDetails?.billingCycle || 'MONTHLY'}</span>
+              </div>
+            </div>
+
+            {/* Billing Cycle Switcher */}
+            <div className="flex items-center justify-between bg-stone-100 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setUpgradeBillingCycle('MONTHLY')}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${
+                  upgradeBillingCycle === 'MONTHLY' ? 'bg-amber-900 text-white shadow-sm' : 'text-stone-600'
+                }`}
+              >
+                Monthly Plan (30 Days)
+              </button>
+              <button
+                type="button"
+                onClick={() => setUpgradeBillingCycle('ANNUAL')}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${
+                  upgradeBillingCycle === 'ANNUAL' ? 'bg-amber-900 text-white shadow-sm' : 'text-stone-600'
+                }`}
+              >
+                Annual Plan (12 Months • 15% Off)
+              </button>
+            </div>
+
+            {/* Plans List */}
+            <div className="space-y-2.5">
+              {availablePlans.map(plan => {
+                const isSelected = upgradePlanId === plan.id;
+                const displayPrice = upgradeBillingCycle === 'ANNUAL'
+                  ? Number(plan.price) * 10
+                  : Number(plan.price);
+
+                return (
+                  <div
+                    key={plan.id}
+                    onClick={() => setUpgradePlanId(plan.id)}
+                    className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
+                      isSelected
+                        ? 'border-amber-600 bg-amber-50/80 shadow-md'
+                        : 'border-stone-200 hover:border-amber-300 bg-white'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-black text-amber-950 text-xs">{plan.name}</span>
+                        {isSelected && <span className="bg-amber-600 text-white text-[9px] font-black px-2 py-0.2 rounded-full">SELECTED</span>}
+                      </div>
+                      <div className="flex items-center gap-3 text-[11px] text-stone-600 mt-1 font-medium">
+                        <span>🏬 Up to <strong>{plan.maxStores} Stores</strong></span>
+                        <span>•</span>
+                        <span>👥 Up to <strong>{plan.maxUsers} Staff Seats</strong></span>
+                        <span>•</span>
+                        <span>⏳ <strong>{upgradeBillingCycle === 'ANNUAL' ? '365 Days' : '30 Days'}</strong></span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-mono font-black text-amber-950 text-sm">
+                        ₹{displayPrice.toLocaleString('en-IN')}
+                      </span>
+                      <span className="text-[10px] text-stone-500 block">
+                        /{upgradeBillingCycle === 'ANNUAL' ? 'year' : 'month'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex gap-2 pt-3 border-t border-amber-100">
+              <button
+                type="button"
+                onClick={() => setIsUpgradeModalOpen(false)}
+                className="w-1/3 bg-stone-100 hover:bg-stone-200 text-stone-700 py-2.5 rounded-xl font-bold cursor-pointer text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleUpgradePlan}
+                disabled={isUpgrading}
+                className="w-2/3 gold-button-primary py-2.5 rounded-xl font-bold cursor-pointer flex items-center justify-center gap-1.5 shadow-md text-xs"
+              >
+                {isUpgrading ? (
+                  <span>Processing Real-Time Upgrade...</span>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 text-amber-200" />
+                    <span>Confirm & Activate Subscription</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
