@@ -1,0 +1,77 @@
+package com.megamart.service;
+
+import com.megamart.dto.*;
+import com.megamart.model.*;
+import com.megamart.repository.*;
+import com.megamart.security.JwtTokenProvider;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class AuthService {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private TenantRepository tenantRepository;
+
+    @Autowired
+    private SubscriptionPlanRepository planRepository;
+
+    @Autowired
+    private StoreRepository storeRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private JwtTokenProvider tokenProvider;
+
+    public AuthResponse login(AuthRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Invalid email or password"));
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            throw new RuntimeException("Invalid email or password");
+        }
+
+        String token = tokenProvider.generateToken(user);
+        return new AuthResponse(token, new UserDto(user));
+    }
+
+    public AuthResponse pinLogin(PinAuthRequest request) {
+        User user = userRepository.findByTenantIdAndPinCode(request.getTenantId(), request.getPinCode())
+                .orElseThrow(() -> new RuntimeException("Invalid PIN code for tenant"));
+
+        String token = tokenProvider.generateToken(user);
+        return new AuthResponse(token, new UserDto(user));
+    }
+
+    @Transactional
+    public AuthResponse registerTenant(TenantRegistrationRequest request) {
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new RuntimeException("Email already registered: " + request.getEmail());
+        }
+
+        SubscriptionPlan plan = planRepository.findById(request.getPlanId() != null ? request.getPlanId() : 1L)
+                .orElseThrow(() -> new RuntimeException("Invalid subscription plan ID"));
+
+        // 1. Create Tenant
+        Tenant tenant = new Tenant(request.getCompanyName(), plan, TenantStatus.ACTIVE);
+        Tenant savedTenant = tenantRepository.save(tenant);
+
+        // 2. Create Initial Flagship Store
+        Store initialStore = storeRepository.save(new Store(savedTenant.getId(), request.getCompanyName() + " Flagship", "Main City Center", "ST-101"));
+
+        // 3. Create Tenant Admin User
+        String passwordHash = passwordEncoder.encode(request.getPassword());
+        User adminUser = new User(savedTenant.getId(), initialStore.getId(), request.getAdminName(), request.getEmail(), passwordHash, "1234", Role.TENANT_ADMIN);
+        User savedUser = userRepository.save(adminUser);
+
+        String token = tokenProvider.generateToken(savedUser);
+        return new AuthResponse(token, new UserDto(savedUser));
+    }
+}

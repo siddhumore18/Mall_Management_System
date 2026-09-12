@@ -1,0 +1,81 @@
+# ============================================================
+# MegaMart Mall Management — .gitignore
+# Spring Boot (Maven) + React (Vite/TypeScript) Monorepo
+# ============================================================
+
+# ─── Environment & Secrets ───────────────────────────────────
+.env
+.env.*
+!.env.example
+*.secret
+secrets/
+
+# ─── Frontend: Node / npm ────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.cache/
+frontend/coverage/
+frontend/*.local
+
+# ─── Backend: Maven ──────────────────────────────────────────
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+!backend/.mvn/wrapper/maven-wrapper.properties
+
+# ─── Backend: Spring Boot logs & temp ────────────────────────
+backend/logs/
+backend/*.log
+backend/spring.log*
+
+# ─── Java compiled output ────────────────────────────────────
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+
+# ─── IDE: IntelliJ IDEA ──────────────────────────────────────
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+.idea_modules/
+
+# ─── IDE: VS Code ────────────────────────────────────────────
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+.vscode/*.code-snippets
+!.vscode/extensions.json
+
+# ─── OS Files ────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# ─── Docker ──────────────────────────────────────────────────
+docker-compose.override.yml
+
+# ─── Database ────────────────────────────────────────────────
+*.sql.backup
+*.dump
+*.pgdump
+pgdata/
+
+# ─── Test & Coverage ─────────────────────────────────────────
+backend/target/surefire-reports/
+backend/target/failsafe-reports/
+frontend/coverage/
+
+# ─── Build Artifacts ─────────────────────────────────────────
+*.tmp
+*.swp
+*.swo
+*~
