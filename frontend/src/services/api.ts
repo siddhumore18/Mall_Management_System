@@ -500,59 +500,230 @@ export const tenantApi = {
 
 export const superAdminApi = {
   getTenants: async (): Promise<any[]> => {
+    let backendTenants: any[] = [];
     try {
       const res = await fetch(`${API_BASE}/superadmin/tenants`, { headers: getHeaders() });
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) return data;
+        if (Array.isArray(data)) backendTenants = data;
       }
     } catch (e) {
       console.warn('Backend superadmin/tenants fetch failed, checking local registry:', e);
     }
-    const localRegistered = JSON.parse(localStorage.getItem('megamart_registered_users') || '[]');
-    const localTenants = localRegistered.map((u: any, idx: number) => ({
-      id: u.tenantId || (100 + idx),
-      name: u.companyName || u.name,
-      plan: u.tenantInfo?.planName || 'Standard Chain',
-      status: 'ACTIVE',
-      storesCount: u.tenantInfo?.maxStores ? Math.min(u.tenantInfo.maxStores, 2) : 1,
-      monthlyFee: u.tenantInfo?.planPrice || 14999,
-      renewalDate: '2027-09-14',
-      usersCount: 3,
-      city: 'Mumbai',
-      maxStores: u.tenantInfo?.maxStores || 10,
-      maxUsers: u.tenantInfo?.maxUsers || 50,
-      billingCycle: 'MONTHLY'
-    }));
+
+    // Read local registered users
+    let localRegistered: any[] = [];
+    try {
+      localRegistered = JSON.parse(localStorage.getItem('megamart_registered_users') || '[]');
+    } catch (e) {}
+
+    // Read current logged in tenant details if available
+    let activeTenantDetails: any = null;
+    try {
+      activeTenantDetails = JSON.parse(localStorage.getItem('megamart_tenant_details') || 'null');
+    } catch (e) {}
+
+    // Read manually onboarded tenants
+    let extraTenants: any[] = [];
+    try {
+      extraTenants = JSON.parse(localStorage.getItem('megamart_tenants_store') || '[]');
+    } catch (e) {}
+
+    const localMapped = localRegistered.map((u: any, idx: number) => {
+      const tInfo = u.tenantInfo || {};
+      const planName = tInfo.planName || (tInfo.planId === 3 ? 'Enterprise Plan' : tInfo.planId === 1 ? 'Starter Plan' : 'Standard Plan');
+      const companyName = u.companyName || tInfo.companyName || u.name || 'Registered Client Tenant';
+      const adminName = u.name || tInfo.adminName || (companyName + ' Admin');
+      const adminEmail = u.email || tInfo.adminEmail || ('admin@' + companyName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com');
+      const paymentMethod = tInfo.paymentMethod || 'Razorpay UPI';
+      const paymentId = tInfo.paymentId || ('pay_rzp_' + (u.tenantId || (100 + idx)));
+      const amountPaid = tInfo.amountPaid || tInfo.planPrice || 14999;
+      const invoiceNumber = tInfo.invoiceNumber || ('MM-SAAS-' + String(1000 + (u.tenantId || idx)));
+      const gstin = tInfo.gstin || '27AAAAA0000A1Z5';
+      const billingCycle = tInfo.billingCycle || 'MONTHLY';
+      const maxStores = tInfo.maxStores || (planName.toLowerCase().includes('enterprise') ? 50 : planName.toLowerCase().includes('starter') ? 1 : 5);
+      const maxUsers = tInfo.maxUsers || (planName.toLowerCase().includes('enterprise') ? 500 : planName.toLowerCase().includes('starter') ? 5 : 25);
+
+      return {
+        id: u.tenantId || (100 + idx),
+        name: companyName,
+        plan: planName,
+        status: tInfo.status || 'ACTIVE',
+        storesCount: tInfo.activeStoresCount || 1,
+        usersCount: tInfo.activeUsersCount || 1,
+        monthlyFee: amountPaid,
+        amountPaid: amountPaid,
+        renewalDate: tInfo.renewalDate || (billingCycle === 'ANNUAL' ? '2027-09-14' : '2026-10-14'),
+        startDate: tInfo.startDate || new Date().toISOString().split('T')[0],
+        city: tInfo.city || 'Mumbai',
+        adminName: adminName,
+        adminEmail: adminEmail,
+        paymentMethod: paymentMethod,
+        paymentId: paymentId,
+        invoiceNumber: invoiceNumber,
+        gstin: gstin,
+        maxStores: maxStores,
+        maxUsers: maxUsers,
+        billingCycle: billingCycle
+      };
+    });
+
+    // If active tenant is not yet in localRegistered, map it too
+    if (activeTenantDetails && activeTenantDetails.companyName) {
+      localMapped.push({
+        id: activeTenantDetails.id || 999,
+        name: activeTenantDetails.companyName,
+        plan: activeTenantDetails.planName || 'Standard Plan',
+        status: activeTenantDetails.status || 'ACTIVE',
+        storesCount: activeTenantDetails.activeStoresCount || 1,
+        usersCount: activeTenantDetails.activeUsersCount || 1,
+        monthlyFee: activeTenantDetails.planPrice || 14999,
+        amountPaid: activeTenantDetails.planPrice || 14999,
+        renewalDate: activeTenantDetails.subscriptionEndDate || '2027-09-14',
+        startDate: activeTenantDetails.subscriptionStartDate || new Date().toISOString().split('T')[0],
+        city: 'Mumbai',
+        adminName: activeTenantDetails.adminName || (activeTenantDetails.companyName + ' Admin'),
+        adminEmail: activeTenantDetails.adminEmail || ('admin@' + activeTenantDetails.companyName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com'),
+        paymentMethod: 'Razorpay UPI',
+        paymentId: 'pay_active_' + activeTenantDetails.id,
+        invoiceNumber: 'MM-SAAS-' + String(1000 + (activeTenantDetails.id || 1)),
+        gstin: '27AAAAA0000A1Z5',
+        maxStores: activeTenantDetails.maxStores || 5,
+        maxUsers: activeTenantDetails.maxUsers || 25,
+        billingCycle: activeTenantDetails.billingCycle || 'MONTHLY'
+      });
+    }
 
     const defaults = [
-      { id: 1, name: 'MegaMart Retail India Ltd', plan: 'Enterprise Hyper-Scale', status: 'ACTIVE', storesCount: 2, monthlyFee: 39999, renewalDate: '2026-10-01', usersCount: 14, city: 'Mumbai', maxStores: 50, maxUsers: 500, billingCycle: 'ANNUAL' },
-      { id: 2, name: 'Apex Superstores Bharat', plan: 'Standard Chain', status: 'ACTIVE', storesCount: 1, monthlyFee: 14999, renewalDate: '2026-09-28', usersCount: 6, city: 'Bengaluru', maxStores: 10, maxUsers: 50, billingCycle: 'MONTHLY' }
+      { 
+        id: 1, 
+        name: 'MegaMart Retail India Ltd', 
+        plan: 'Enterprise Hyper-Scale', 
+        status: 'ACTIVE', 
+        storesCount: 2, 
+        monthlyFee: 39999, 
+        amountPaid: 39999,
+        renewalDate: '2026-10-01', 
+        startDate: '2025-10-01',
+        usersCount: 14, 
+        city: 'Mumbai', 
+        adminName: 'Vikramaditya Singhania',
+        adminEmail: 'v.singhania@megamart.com',
+        paymentMethod: 'Corporate Wire (HDFC)',
+        paymentId: 'HDFC_CORP_998124',
+        invoiceNumber: 'MM-SAAS-00101',
+        gstin: '27AABCM9876Q1Z0',
+        maxStores: 50, 
+        maxUsers: 500, 
+        billingCycle: 'ANNUAL' 
+      },
+      { 
+        id: 2, 
+        name: 'Apex Superstores Bharat', 
+        plan: 'Standard Chain', 
+        status: 'ACTIVE', 
+        storesCount: 1, 
+        monthlyFee: 14999, 
+        amountPaid: 14999,
+        renewalDate: '2026-09-28', 
+        startDate: '2026-08-28',
+        usersCount: 6, 
+        city: 'Bengaluru', 
+        adminName: 'Rajesh Nambiar',
+        adminEmail: 'rajesh@apexsuperstores.in',
+        paymentMethod: 'Razorpay UPI',
+        paymentId: 'pay_rzp_apex_77812',
+        invoiceNumber: 'MM-SAAS-00102',
+        gstin: '29ABCDE1234F1Z5',
+        maxStores: 10, 
+        maxUsers: 50, 
+        billingCycle: 'MONTHLY' 
+      }
     ];
 
-    return [...localTenants, ...defaults.filter(d => !localTenants.some((lt: any) => lt.name.toLowerCase() === d.name.toLowerCase()))];
+    // Combine backendTenants, localMapped, extraTenants, and defaults uniquely by name
+    const combined: any[] = [];
+    const seenNames = new Set<string>();
+
+    const addTenant = (t: any) => {
+      if (!t || !t.name) return;
+      const key = t.name.trim().toLowerCase();
+      if (seenNames.has(key)) return;
+      seenNames.add(key);
+
+      combined.push({
+        id: t.id || (Date.now() + Math.floor(Math.random() * 1000)),
+        name: t.name,
+        plan: t.plan || 'Standard Chain',
+        status: t.status || 'ACTIVE',
+        storesCount: t.storesCount || 1,
+        usersCount: t.usersCount || 1,
+        monthlyFee: t.monthlyFee || t.amountPaid || 14999,
+        amountPaid: t.amountPaid || t.monthlyFee || 14999,
+        renewalDate: t.renewalDate || '2027-09-14',
+        startDate: t.startDate || new Date().toISOString().split('T')[0],
+        city: t.city || 'Mumbai',
+        adminName: t.adminName || (t.name + ' Admin'),
+        adminEmail: t.adminEmail || ('admin@' + t.name.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com'),
+        paymentMethod: t.paymentMethod || 'Razorpay UPI',
+        paymentId: t.paymentId || ('pay_rzp_' + t.id),
+        invoiceNumber: t.invoiceNumber || ('MM-SAAS-' + String(1000 + (t.id || 1))),
+        gstin: t.gstin || '27AAAAA0000A1Z5',
+        maxStores: t.maxStores || 10,
+        maxUsers: t.maxUsers || 50,
+        billingCycle: t.billingCycle || 'MONTHLY'
+      });
+    };
+
+    // User's newly registered clients come first!
+    localMapped.forEach(addTenant);
+    extraTenants.forEach(addTenant);
+    backendTenants.forEach(addTenant);
+    defaults.forEach(addTenant);
+
+    return combined;
   },
 
-  createTenant: async (data: { name: string; city: string; planId?: number; plan?: string; fee?: number }) => {
+  createTenant: async (data: { name: string; city: string; planId?: number; plan?: string; fee?: number; adminName?: string; adminEmail?: string }) => {
+    let created: any = null;
     try {
       const res = await fetch(`${API_BASE}/superadmin/tenants`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(data)
       });
-      if (res.ok) return await res.json();
+      if (res.ok) created = await res.json();
     } catch (e) {}
-    return {
-      id: Date.now(),
-      name: data.name,
-      city: data.city || 'Mumbai',
-      plan: data.plan || 'Standard Chain',
-      status: 'ACTIVE',
-      storesCount: 1,
-      usersCount: 1,
-      monthlyFee: data.fee || 14999,
-      renewalDate: '2027-09-14'
-    };
+
+    if (!created) {
+      created = {
+        id: Date.now(),
+        name: data.name,
+        city: data.city || 'Mumbai',
+        plan: data.plan || 'Standard Chain',
+        status: 'ACTIVE',
+        storesCount: 1,
+        usersCount: 1,
+        monthlyFee: data.fee || 14999,
+        amountPaid: data.fee || 14999,
+        renewalDate: '2027-09-14',
+        startDate: new Date().toISOString().split('T')[0],
+        adminName: data.adminName || (data.name + ' Owner'),
+        adminEmail: data.adminEmail || ('admin@' + data.name.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com'),
+        invoiceNumber: `MM-SAAS-${Date.now().toString().slice(-5)}`,
+        paymentMethod: 'Direct SaaS Onboarding',
+        paymentId: `ONBOARD_${Date.now()}`,
+        gstin: '27AAAAA0000A1Z5',
+        billingCycle: 'MONTHLY'
+      };
+    }
+
+    try {
+      const existing = JSON.parse(localStorage.getItem('megamart_tenants_store') || '[]');
+      localStorage.setItem('megamart_tenants_store', JSON.stringify([created, ...existing.filter((x: any) => x.id !== created.id)]));
+    } catch (e) {}
+
+    return created;
   },
 
   updateTenantStatus: async (id: number, status: 'ACTIVE' | 'SUSPENDED') => {

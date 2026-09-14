@@ -169,7 +169,15 @@ export const SuperAdminPage: React.FC = () => {
 
   React.useEffect(() => {
     fetchRealData();
-  }, []);
+
+    const onStorageChange = (e: StorageEvent) => {
+      if (!e.key || e.key === 'megamart_registered_users' || e.key === 'megamart_tenants_store' || e.key === 'megamart_tenant_details') {
+        fetchRealData();
+      }
+    };
+    window.addEventListener('storage', onStorageChange);
+    return () => window.removeEventListener('storage', onStorageChange);
+  }, [activeNavItem]);
 
   const activeTenants = tenants.filter(t => t.status === 'ACTIVE');
   const totalMrr = dbMetrics?.totalMrr || activeTenants.reduce((sum, t) => sum + (t.monthlyFee || 0), 0);
