@@ -15,7 +15,12 @@ const loadSavedBillsHistory = (tenantId: number = 1): any[] => {
   try {
     const key = tenantId === 1 ? 'megamart_bills_history' : `megamart_tenant_${tenantId}_bills_history`;
     const saved = localStorage.getItem(key);
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((b: any) => b.id !== 'INV-891024' && b.id !== 'INV-891023' && b.id !== 'INV-891022');
+      }
+    }
   } catch (e) {}
   return [];
 };
@@ -122,7 +127,7 @@ export const CustomerDirectoryView: React.FC = () => {
       if (!customerMap.has(key)) {
         customerMap.set(key, {
           id: rawId || Date.now() + Math.floor(Math.random() * 10000),
-          name: rawName && rawName !== 'Valued Customer' && rawName !== 'Walk-in Customer' ? rawName : 'Valued Customer',
+          name: rawName && rawName !== 'Valued Customer' && rawName !== 'Walk-in Customer' && rawName !== 'Walk-in Guest' ? rawName : 'Valued Customer',
           phoneNumber: phone || 'N/A',
           normalizedPhone: normPhone,
           loyaltyPoints: 0,
@@ -131,11 +136,14 @@ export const CustomerDirectoryView: React.FC = () => {
       }
 
       const existing = customerMap.get(key)!;
-      if (rawName && rawName !== 'Valued Customer' && rawName !== 'Walk-in Customer' && (existing.name === 'Valued Customer' || !existing.name)) {
+      if (rawName && rawName !== 'Valued Customer' && rawName !== 'Walk-in Customer' && rawName !== 'Walk-in Guest' && (existing.name === 'Valued Customer' || !existing.name)) {
         existing.name = rawName;
       }
       if (phone && (!existing.phoneNumber || existing.phoneNumber === 'N/A')) {
         existing.phoneNumber = phone;
+      }
+      if (rawId && (!existing.id || typeof existing.id !== 'number')) {
+        existing.id = rawId;
       }
       return existing;
     };
@@ -144,8 +152,15 @@ export const CustomerDirectoryView: React.FC = () => {
     const filteredDbCustomers = isDemoTenant ? dbCustomers : dbCustomers.filter(c => c.tenantId === currentTenantId);
     const filteredDbTxns = isDemoTenant ? dbTransactions : dbTransactions.filter(t => t.tenantId === currentTenantId);
 
+    // Build lookup maps for fast ID & phone resolution
+    const customerById = new Map<number | string, Customer>();
+    const customerByPhone = new Map<string, Customer>();
+
     // 1. Process DB Customers
     filteredDbCustomers.forEach(c => {
+      if (c.id) customerById.set(c.id, c);
+      const norm = normalizePhoneDigits(c.phoneNumber);
+      if (norm) customerByPhone.set(norm, c);
       const entry = getOrCreateEntry(c.phoneNumber, c.name, c.id);
       entry.loyaltyPoints = Math.max(entry.loyaltyPoints, c.loyaltyPoints || 0);
     });
@@ -153,25 +168,54 @@ export const CustomerDirectoryView: React.FC = () => {
     // 2. Process POS Store Customers
     customersList.forEach(c => {
       if (!isDemoTenant && c.tenantId && c.tenantId !== currentTenantId) return;
+      if (c.id && !customerById.has(c.id)) customerById.set(c.id, c);
+      const norm = normalizePhoneDigits(c.phoneNumber);
+      if (norm && !customerByPhone.has(norm)) customerByPhone.set(norm, c);
       const entry = getOrCreateEntry(c.phoneNumber, c.name, c.id);
       entry.loyaltyPoints = Math.max(entry.loyaltyPoints, c.loyaltyPoints || 0);
     });
 
     // 3. Process DB Transactions & Attach to Customer History
-    dbTransactions.forEach(t => {
-      const phone = t.customerPhone || '';
-      const name = t.customerName || 'Valued Customer';
-      const entry = getOrCreateEntry(phone, name, t.id);
+    filteredDbTxns.forEach(t => {
+      let phone = t.customerPhone || '';
+      let name = t.customerName || '';
+      let custId = t.customerId;
 
-      const txnId = `TXN-${t.id}`;
+      // Look up customer by ID or Phone to avoid creating dummy duplicate customer records
+      if (!phone && custId && customerById.has(custId)) {
+        const matched = customerById.get(custId)!;
+        phone = matched.phoneNumber || '';
+        if (!name) name = matched.name;
+      }
+      if (!name && phone) {
+        const norm = normalizePhoneDigits(phone);
+        if (norm && customerByPhone.has(norm)) {
+          const matched = customerByPhone.get(norm)!;
+          name = matched.name;
+          if (!custId) custId = matched.id;
+        }
+      }
+
+      // Anonymous walk-ins with no phone and no customer ID are not loyalty directory members
+      const normPhone = normalizePhoneDigits(phone);
+      if (!normPhone && !custId) {
+        return;
+      }
+
+      const entry = getOrCreateEntry(phone, name, custId);
+
+      const txnId = t.invoiceNumber || `INV-${String(t.id).padStart(6, '0')}`;
       if (!entry.historyMap.has(txnId)) {
-        const dateObj = t.createdAt ? new Date(t.createdAt) : new Date();
+        const rawDate = t.timestamp || t.createdAt;
+        const dateObj = rawDate ? new Date(rawDate) : new Date();
         entry.historyMap.set(txnId, {
           id: txnId,
           date: dateObj.toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
           timestamp: dateObj.getTime(),
           paymentMethod: t.paymentMethod || 'UPI',
           totalAmount: Number(t.totalAmount) || 0,
+          taxAmount: Number(t.taxAmount) || 0,
+          discountAmount: Number(t.discountAmount) || 0,
           storeName: `Store #${t.storeId || 1}`,
           items: (t.lineItems || []).map(li => ({
             name: li.product?.name || `Product #${li.id}`,
@@ -183,23 +227,37 @@ export const CustomerDirectoryView: React.FC = () => {
       }
     });
 
-    // 4. Process Local Bills History & Attach to Customer History
+    // 4. Process Local Bills History & Attach to Customer History (with deduplication)
     billsHistory.forEach(b => {
+      // Ignore dummy mock seed bills
+      if (b.id === 'INV-891024' || b.id === 'INV-891023' || b.id === 'INV-891022') return;
+
       const phone = b.customerPhone || '';
-      const name = b.customerName || 'Valued Customer';
+      const name = b.customerName || '';
+      const normPhone = normalizePhoneDigits(phone);
+      if (!normPhone) return;
+
       const entry = getOrCreateEntry(phone, name);
 
-      const billId = b.id || `INV-${Math.floor(Math.random() * 900000 + 100000)}`;
-      if (!entry.historyMap.has(billId)) {
+      const billId = b.id || `INV-${b.dbTxnId || 'LOCAL'}`;
+      // Check if bill is already present in history to prevent double counting
+      const alreadyExists = Array.from(entry.historyMap.values()).some(h =>
+        h.id === billId ||
+        (b.dbTxnId && (h.id === `INV-${String(b.dbTxnId).padStart(6, '0')}` || h.id === `TXN-${b.dbTxnId}`)) ||
+        (Math.abs(h.totalAmount - (Number(b.amount || b.total) || 0)) < 0.01 &&
+         Math.abs(h.timestamp - (b.timestamp || 0)) < 180000)
+      );
+
+      if (!alreadyExists) {
         const dateStr = b.date || new Date().toLocaleString();
         const dateObj = new Date(dateStr);
-        const timestamp = isNaN(dateObj.getTime()) ? Date.now() - Math.floor(Math.random() * 10000000) : dateObj.getTime();
+        const timestamp = b.timestamp || (isNaN(dateObj.getTime()) ? Date.now() : dateObj.getTime());
 
         entry.historyMap.set(billId, {
           id: billId,
           date: dateStr,
           timestamp,
-          paymentMethod: b.paymentMethod || b.payment || 'UPI QR',
+          paymentMethod: b.paymentMethod || b.paymentMode || 'UPI QR',
           totalAmount: Number(b.amount || b.total) || 0,
           taxAmount: Number(b.tax) || 0,
           discountAmount: Number(b.discount) || 0,

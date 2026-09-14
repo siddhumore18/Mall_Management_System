@@ -164,25 +164,37 @@ export const RoleSidebar: React.FC<Props> = ({ collapsed, setCollapsed }) => {
       collapsed ? 'w-16' : 'w-64'
     }`}>
       {/* Branding Header */}
-      <div className="h-14 border-b border-amber-200/80 px-3.5 flex items-center justify-between bg-white">
-        <div className="flex items-center gap-2.5 overflow-hidden">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 flex items-center justify-center text-white shrink-0 shadow-md shadow-amber-500/20">
-            <Crown className="w-4 h-4 text-white" />
-          </div>
-          {!collapsed && (
-            <div className="truncate">
-              <span className="font-extrabold text-xs text-stone-900 tracking-tight block leading-none">MEGAMART<span className="text-amber-600">.GOLD</span></span>
-              <span className="text-[10px] text-amber-700/80 font-semibold">{config.subtitle}</span>
+      <div className={`h-14 border-b border-amber-200/80 flex items-center bg-white ${
+        collapsed ? 'justify-center px-2' : 'justify-between px-3.5'
+      }`}>
+        {collapsed ? (
+          <button
+            onClick={() => setCollapsed(false)}
+            className="w-10 h-10 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 flex items-center justify-center transition-all cursor-pointer border border-amber-200/80 shadow-2xs group"
+            title="Expand Sidebar"
+          >
+            <ChevronRight className="w-5 h-5 text-amber-800 transition-transform group-hover:translate-x-0.5" />
+          </button>
+        ) : (
+          <>
+            <div className="flex items-center gap-2.5 overflow-hidden">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 flex items-center justify-center text-white shrink-0 shadow-md shadow-amber-500/20">
+                <Crown className="w-4 h-4 text-white" />
+              </div>
+              <div className="truncate">
+                <span className="font-extrabold text-xs text-stone-900 tracking-tight block leading-none">MEGAMART<span className="text-amber-600">.GOLD</span></span>
+                <span className="text-[10px] text-amber-700/80 font-semibold">{config.subtitle}</span>
+              </div>
             </div>
-          )}
-        </div>
-        <button
-          onClick={() => setCollapsed(prev => !prev)}
-          className="p-1.5 rounded-lg text-stone-400 hover:text-amber-900 hover:bg-amber-50 transition-colors cursor-pointer"
-          title="Toggle Sidebar"
-        >
-          <ChevronRight className={`w-4 h-4 transition-transform duration-200 ${collapsed ? '' : 'rotate-180'}`} />
-        </button>
+            <button
+              onClick={() => setCollapsed(true)}
+              className="p-1.5 rounded-lg text-stone-400 hover:text-amber-900 hover:bg-amber-50 transition-colors cursor-pointer"
+              title="Collapse Sidebar"
+            >
+              <ChevronRight className="w-4 h-4 rotate-180 transition-transform duration-200" />
+            </button>
+          </>
+        )}
       </div>
 
       {/* Role Badge */}
@@ -201,7 +213,7 @@ export const RoleSidebar: React.FC<Props> = ({ collapsed, setCollapsed }) => {
       )}
 
       {/* Navigation Sections */}
-      <div className="flex-1 overflow-y-auto px-2.5 py-3 space-y-4">
+      <div className={`flex-1 overflow-y-auto py-3 space-y-4 ${collapsed ? 'px-2' : 'px-2.5'}`}>
         {config.sections.map((section, sIdx) => (
           <div key={sIdx} className="space-y-1">
             {!collapsed && (
@@ -216,43 +228,76 @@ export const RoleSidebar: React.FC<Props> = ({ collapsed, setCollapsed }) => {
                 <button
                   key={item.id}
                   onClick={() => setActiveNavItem(item.id)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all group cursor-pointer relative ${
-                    isActive
-                      ? 'bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 text-white shadow-md shadow-amber-500/25'
-                      : 'text-stone-700 hover:text-amber-900 hover:bg-amber-50/80'
+                  className={`transition-all group cursor-pointer relative ${
+                    collapsed
+                      ? `w-10 h-10 mx-auto flex items-center justify-center rounded-xl ${
+                          isActive
+                            ? 'bg-gradient-to-br from-amber-500 via-amber-600 to-yellow-600 text-white shadow-md shadow-amber-500/25 ring-2 ring-amber-400/40'
+                            : 'text-stone-600 hover:text-amber-900 hover:bg-amber-50/90'
+                        }`
+                      : `w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold ${
+                          isActive
+                            ? 'bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 text-white shadow-md shadow-amber-500/25'
+                            : 'text-stone-700 hover:text-amber-900 hover:bg-amber-50/80'
+                        }`
                   }`}
                   title={item.label}
                 >
-                  {isActive && (
+                  {isActive && !collapsed && (
                     <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-white rounded-r-full"></div>
                   )}
-                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-amber-700/70 group-hover:text-amber-800'}`} />
+                  <Icon className={`${collapsed ? 'w-5 h-5' : 'w-4 h-4 shrink-0'} ${
+                    isActive ? 'text-white' : 'text-amber-700/70 group-hover:text-amber-800'
+                  }`} />
                   {!collapsed && <span className="truncate">{item.label}</span>}
                 </button>
               );
             })}
             {sIdx < config.sections.length - 1 && (
-              <div className="pt-2 border-b border-amber-200/60"></div>
+              <div className={collapsed ? 'w-6 mx-auto my-2 border-b border-amber-200/60' : 'pt-2 border-b border-amber-200/60'}></div>
             )}
           </div>
         ))}
       </div>
 
       {/* User Footer & Logout */}
-      <div className="p-2.5 border-t border-amber-200/80 bg-amber-50/30 space-y-2">
-        <div className="flex items-center justify-between gap-2 bg-white border border-amber-200 p-2 rounded-xl shadow-2xs">
-          <div className="flex items-center gap-2 overflow-hidden">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200 text-amber-950 font-black text-xs flex items-center justify-center shrink-0 border border-amber-300 shadow-2xs">
-              {user?.name ? user.name[0] : 'U'}
+      <div className={`border-t border-amber-200/80 bg-amber-50/30 ${
+        collapsed ? 'p-2 flex flex-col items-center gap-2' : 'p-2.5 space-y-2'
+      }`}>
+        {collapsed ? (
+          <>
+            <div
+              className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200 text-amber-950 font-black text-xs flex items-center justify-center border border-amber-300 shadow-2xs cursor-default"
+              title={`${user?.name || 'User'} (${activeRole.replace(/_/g, ' ')})`}
+            >
+              {user?.name ? user.name[0].toUpperCase() : 'U'}
             </div>
-            {!collapsed && (
+            <button
+              onClick={() => setPinLocked(true)}
+              className="w-10 h-10 rounded-xl text-amber-800 hover:bg-amber-100 flex items-center justify-center transition-colors border border-amber-200/80 cursor-pointer"
+              title="Lock Terminal"
+            >
+              <Lock className="w-4 h-4" />
+            </button>
+            <button
+              onClick={logout}
+              className="w-10 h-10 rounded-xl text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors border border-rose-200/80 cursor-pointer"
+              title="Logout"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </>
+        ) : (
+          <div className="flex items-center justify-between gap-2 bg-white border border-amber-200 p-2 rounded-xl shadow-2xs">
+            <div className="flex items-center gap-2 overflow-hidden">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200 text-amber-950 font-black text-xs flex items-center justify-center shrink-0 border border-amber-300 shadow-2xs">
+                {user?.name ? user.name[0] : 'U'}
+              </div>
               <div className="truncate">
                 <span className="text-xs font-bold text-stone-900 block leading-tight truncate">{user?.name || 'User'}</span>
                 <span className="text-[10px] text-amber-700 font-semibold uppercase">{activeRole.replace(/_/g, ' ')}</span>
               </div>
-            )}
-          </div>
-          {!collapsed && (
+            </div>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setPinLocked(true)}
@@ -269,8 +314,8 @@ export const RoleSidebar: React.FC<Props> = ({ collapsed, setCollapsed }) => {
                 <LogOut className="w-3.5 h-3.5" />
               </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </aside>
   );

@@ -99,7 +99,17 @@ public class TransactionService {
         }
         transaction.setTotalAmount(finalTotal);
 
+        transaction.setCustomerName(customer != null ? customer.getName() : (request.getCustomerName() != null && !request.getCustomerName().isBlank() ? request.getCustomerName() : "Walk-in Guest"));
+        transaction.setCustomerPhone(customer != null ? customer.getPhoneNumber() : (request.getCustomerPhone() != null && !request.getCustomerPhone().isBlank() ? request.getCustomerPhone() : "N/A"));
+
         Transaction savedTransaction = transactionRepository.save(transaction);
+
+        String invoiceNo = request.getInvoiceNumber();
+        if (invoiceNo == null || invoiceNo.isBlank()) {
+            invoiceNo = String.format("INV-%06d", savedTransaction.getId());
+        }
+        savedTransaction.setInvoiceNumber(invoiceNo);
+        savedTransaction = transactionRepository.save(savedTransaction);
 
         // Update customer lifetime value and loyalty points
         if (customer != null) {
@@ -113,10 +123,28 @@ public class TransactionService {
     }
 
     public List<Transaction> getTenantTransactions(Long tenantId) {
-        return transactionRepository.findByTenantIdOrderByTimestampDesc(tenantId);
+        List<Transaction> list = transactionRepository.findByTenantIdOrderByTimestampDesc(tenantId);
+        populateMissingDetails(list);
+        return list;
     }
 
     public List<Transaction> getStoreTransactions(Long tenantId, Long storeId) {
-        return transactionRepository.findByTenantIdAndStoreIdOrderByTimestampDesc(tenantId, storeId);
+        List<Transaction> list = transactionRepository.findByTenantIdAndStoreIdOrderByTimestampDesc(tenantId, storeId);
+        populateMissingDetails(list);
+        return list;
+    }
+
+    private void populateMissingDetails(List<Transaction> list) {
+        for (Transaction t : list) {
+            if (t.getInvoiceNumber() == null || t.getInvoiceNumber().isBlank()) {
+                t.setInvoiceNumber(String.format("INV-%06d", t.getId()));
+            }
+            if ((t.getCustomerName() == null || t.getCustomerPhone() == null) && t.getCustomerId() != null) {
+                customerRepository.findById(t.getCustomerId()).ifPresent(c -> {
+                    if (t.getCustomerName() == null) t.setCustomerName(c.getName());
+                    if (t.getCustomerPhone() == null) t.setCustomerPhone(c.getPhoneNumber());
+                });
+            }
+        }
     }
 }

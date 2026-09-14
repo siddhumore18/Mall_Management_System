@@ -1,6 +1,6 @@
 import { User, Store, Product, Customer, Transaction, AnalyticsData } from '../types';
 
-const API_BASE = '/api/v1';
+const API_BASE = (import.meta.env.VITE_API_BASE_URL ? import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, '') : '') + '/api/v1';
 
 const getHeaders = () => {
   const token = localStorage.getItem('megamart_jwt');
@@ -209,6 +209,7 @@ export const transactionApi = {
     paymentMethod: string;
     taxAmount: number;
     discountAmount: number;
+    invoiceNumber?: string;
   }): Promise<Transaction> => {
     const res = await fetch(`${API_BASE}/transactions`, {
       method: 'POST',

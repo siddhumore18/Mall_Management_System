@@ -82,11 +82,17 @@ export interface Transaction {
   id: number;
   tenantId: number;
   storeId: number;
+  cashierId?: number;
+  customerId?: number;
   customerPhone?: string;
   customerName?: string;
+  invoiceNumber?: string;
   totalAmount: number;
+  taxAmount?: number;
+  discountAmount?: number;
   paymentMethod: string;
-  createdAt: string;
+  createdAt?: string;
+  timestamp?: string;
   lineItems: TransactionLineItem[];
 }
 

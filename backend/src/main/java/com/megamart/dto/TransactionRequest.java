@@ -12,6 +12,7 @@ public class TransactionRequest {
     private String paymentMethod = "CASH";
     private BigDecimal discountAmount = BigDecimal.ZERO;
     private BigDecimal taxAmount = BigDecimal.ZERO;
+    private String invoiceNumber;
 
     public TransactionRequest() {}
 
@@ -26,6 +27,9 @@ public class TransactionRequest {
 
     public String getCustomerName() { return customerName; }
     public void setCustomerName(String customerName) { this.customerName = customerName; }
+
+    public String getInvoiceNumber() { return invoiceNumber; }
+    public void setInvoiceNumber(String invoiceNumber) { this.invoiceNumber = invoiceNumber; }
 
     public List<CartItemRequest> getLineItems() { return lineItems; }
     public void setLineItems(List<CartItemRequest> lineItems) { this.lineItems = lineItems; }

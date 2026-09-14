@@ -16,7 +16,7 @@ import {
   Barcode, Search, Plus, Minus, Trash2, CreditCard, DollarSign, Camera,
   User, CheckCircle2, AlertCircle, ShoppingBag, Percent, Image as ImageIcon, 
   Sparkles, Tag, ShieldCheck, Phone, UserCheck, UserPlus, Gift, RefreshCw,
-  Lock, ShieldAlert, QrCode, Printer, History, FileText, ChevronRight, ChevronLeft, Check, Keyboard
+  Lock, ShieldAlert, QrCode, Printer, History, FileText, ChevronRight, ChevronLeft, Check, Keyboard, Receipt
 } from 'lucide-react';
 
 const mockProducts: Product[] = [
@@ -48,18 +48,6 @@ const mockProducts: Product[] = [
   { id: 17, tenantId: 1, barcode: '8901234567906', name: 'Dettol Liquid Handwash 500ml Refill', globalPrice: 145.00, costPrice: 95.00, category: 'Personal & Home Care', unit: 'pouch', stockQuantity: 100, imageUrl: 'https://images.unsplash.com/photo-1600857544200-b2f666a9a2ec?w=150&auto=format&fit=crop&q=80' },
 ];
 
-const mockCustomersDatabase: Customer[] = [
-  { id: 101, name: 'Rahul Sharma', phoneNumber: '9876543210', loyaltyPoints: 450, totalSpent: 14200.00, tier: 'GOLD' },
-  { id: 102, name: 'Priya Patel', phoneNumber: '9812345678', loyaltyPoints: 120, totalSpent: 3500.00, tier: 'SILVER' },
-  { id: 103, name: 'Suresh Kumar', phoneNumber: '9765432109', loyaltyPoints: 850, totalSpent: 28900.00, tier: 'PLATINUM' }
-];
-
-const mockBillsHistory = [
-  { id: 'INV-891024', customerName: 'Rahul Sharma', customerPhone: '9876543210', amount: 1420.00, paymentMode: 'UPI', date: '2026-09-10 07:12 AM', itemsCount: 4 },
-  { id: 'INV-891023', customerName: 'Priya Patel', customerPhone: '9812345678', amount: 680.00, paymentMode: 'CASH', date: '2026-09-10 06:45 AM', itemsCount: 2 },
-  { id: 'INV-891022', customerName: 'Suresh Kumar', customerPhone: '9765432109', amount: 3450.00, paymentMode: 'CARD', date: '2026-09-09 08:30 PM', itemsCount: 8 },
-];
-
 const loadSavedProducts = (): Product[] => {
   try {
     const saved = localStorage.getItem('megamart_products_db');
@@ -77,10 +65,12 @@ const loadSavedBillsHistory = (tenantId: number = 1): any[] => {
     const saved = localStorage.getItem(key);
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) {
+        return parsed.filter((b: any) => b.id !== 'INV-891024' && b.id !== 'INV-891023' && b.id !== 'INV-891022');
+      }
     }
   } catch (e) {}
-  return tenantId === 1 ? mockBillsHistory : [];
+  return [];
 };
 
 export const CashierPosPage: React.FC = () => {
@@ -98,11 +88,109 @@ export const CashierPosPage: React.FC = () => {
 
   const [billsHistory, setBillsHistory] = useState<any[]>(() => loadSavedBillsHistory(currentTenantId));
 
+  const refreshBillsHistory = async () => {
+    try {
+      const [txns, custs] = await Promise.all([
+        transactionApi.getStoreTransactions(user?.storeId || 1).catch(() => []),
+        customerApi.getCustomers().catch(() => customersList)
+      ]);
+
+      const custById = new Map<number | string, Customer>();
+      (custs || []).forEach(c => {
+        if (c.id) custById.set(c.id, c);
+      });
+      customersList.forEach(c => {
+        if (c.id && !custById.has(c.id)) custById.set(c.id, c);
+      });
+
+      const localBills = loadSavedBillsHistory(currentTenantId);
+
+      if (txns && txns.length > 0) {
+        const backendBills = txns.map(t => {
+          const rawDate = t.timestamp || t.createdAt;
+          const dateObj = rawDate ? new Date(rawDate) : new Date();
+          const itemsCount = (t.lineItems || []).reduce((acc, li) => acc + (li.quantity || 1), 0);
+          const txnTimestamp = dateObj.getTime();
+          const totalAmt = Number(t.totalAmount) || 0;
+
+          // Resolve real customer name & phone
+          let custName = t.customerName;
+          let custPhone = t.customerPhone;
+
+          if ((!custName || custName === 'Walk-in Guest') && t.customerId && custById.has(t.customerId)) {
+            const matched = custById.get(t.customerId)!;
+            custName = matched.name;
+            custPhone = matched.phoneNumber;
+          }
+
+          // Check if any local bill corresponds to this transaction (by time proximity and exact amount)
+          const matchedLocal = localBills.find((lb: any) => 
+            lb.dbTxnId === t.id ||
+            lb.id === t.invoiceNumber ||
+            (Math.abs((Number(lb.amount) || 0) - totalAmt) < 0.01 && 
+             Math.abs((lb.timestamp || new Date(lb.date).getTime() || 0) - txnTimestamp) < 180000)
+          );
+
+          if (matchedLocal) {
+            if (!custName || custName === 'Walk-in Guest') {
+              custName = matchedLocal.customerName;
+            }
+            if (!custPhone || custPhone === 'N/A') {
+              custPhone = matchedLocal.customerPhone;
+            }
+          }
+
+          return {
+            id: t.invoiceNumber || `INV-${String(t.id).padStart(6, '0')}`,
+            customerName: custName || 'Walk-in Guest',
+            customerPhone: custPhone || 'N/A',
+            amount: totalAmt,
+            paymentMode: t.paymentMethod || matchedLocal?.paymentMode || 'UPI',
+            date: dateObj.toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            timestamp: txnTimestamp,
+            itemsCount: itemsCount || (matchedLocal?.itemsCount || 1),
+            subtotal: (totalAmt) - (Number(t.taxAmount) || 0) + (Number(t.discountAmount) || 0),
+            tax: Number(t.taxAmount) || (matchedLocal?.tax || 0),
+            discount: Number(t.discountAmount) || (matchedLocal?.discount || 0),
+            dbTxnId: t.id,
+            items: (t.lineItems && t.lineItems.length > 0) ? t.lineItems.map(li => ({
+              product: li.product || { name: `Item #${li.id}`, globalPrice: Number(li.unitPrice) || 0 },
+              quantity: li.quantity || 1,
+              name: li.product?.name || `Item #${li.id}`,
+              price: Number(li.unitPrice) || 0,
+              total: (Number(li.unitPrice) || 0) * (li.quantity || 1)
+            })) : (matchedLocal?.items || [])
+          };
+        });
+
+        // Filter out any local bills that are already represented in backendBills
+        const unrepresentedLocalBills = localBills.filter((lb: any) => {
+          const lbTime = lb.timestamp || new Date(lb.date).getTime() || 0;
+          const lbAmt = Number(lb.amount) || 0;
+          return !backendBills.some(bb => 
+            bb.id === lb.id || 
+            (lb.dbTxnId && bb.dbTxnId === lb.dbTxnId) ||
+            (Math.abs(bb.amount - lbAmt) < 0.01 && Math.abs(bb.timestamp - lbTime) < 180000)
+          );
+        });
+
+        const merged = [...backendBills, ...unrepresentedLocalBills].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        setBillsHistory(merged);
+        const key = currentTenantId === 1 ? 'megamart_bills_history' : `megamart_tenant_${currentTenantId}_bills_history`;
+        try { localStorage.setItem(key, JSON.stringify(merged)); } catch (e) {}
+        return;
+      }
+    } catch (e) {
+      console.warn('Could not fetch store transactions from server', e);
+    }
+    setBillsHistory(loadSavedBillsHistory(currentTenantId));
+  };
+
   useEffect(() => {
     useRetailStore.getState().loadTenantData(currentTenantId);
     usePosStore.getState().loadTenantCustomers(currentTenantId);
-    setBillsHistory(loadSavedBillsHistory(currentTenantId));
-  }, [currentTenantId]);
+    refreshBillsHistory();
+  }, [currentTenantId, user?.storeId, activeNavItem]);
   const [barcodeInput, setBarcodeInput] = useState('');
   const [phoneSearchInput, setPhoneSearchInput] = useState('');
   const [customerNotFound, setCustomerNotFound] = useState(false);
@@ -459,12 +547,31 @@ export const CashierPosPage: React.FC = () => {
     setIsPaymentGatewayOpen(true);
   };
 
-  const handlePaymentSuccess = (paymentDetails: { method: string; paymentId: string; orderId: string; amount: number }) => {
+  const handlePaymentSuccess = async (paymentDetails: { method: string; paymentId: string; orderId: string; amount: number }) => {
     setIsPaymentGatewayOpen(false);
     
     // Earned loyalty points: 1 point per 100 spent
     const pointsEarned = Math.floor(getTotalAmount() / 100);
-    const invoiceId = `INV-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    // 1. Persist Sale Transaction in Backend Database first
+    let savedTxn: any = null;
+    try {
+      savedTxn = await transactionApi.create({
+        storeId: user?.storeId || 1,
+        customerId: activeCustomer?.id,
+        customerPhone: activeCustomer?.phoneNumber,
+        customerName: activeCustomer?.name,
+        lineItems: cart.map(item => ({ productId: item.product.id, quantity: item.quantity })),
+        paymentMethod: paymentDetails.method,
+        taxAmount: getTaxAmount(),
+        discountAmount: getDiscountAmount()
+      });
+    } catch (e) {
+      console.warn('Backend transaction persistence failed, proceeding with local fallback', e);
+    }
+
+    const invoiceId = savedTxn?.invoiceNumber 
+      || (savedTxn?.id ? `INV-${String(savedTxn.id).padStart(6, '0')}` : `INV-${Date.now().toString().slice(-6)}`);
 
     const receiptData = {
       invoiceId,
@@ -478,20 +585,9 @@ export const CashierPosPage: React.FC = () => {
       paymentMethod: paymentDetails.method,
       cashierName: user?.name || 'Priya Patel (Lead Cashier)',
       date: new Date().toLocaleString(),
-      pointsEarned
+      pointsEarned,
+      dbTxnId: savedTxn?.id
     };
-
-    // 1. Persist Sale Transaction in Backend Database
-    transactionApi.create({
-      storeId: user?.storeId || 1,
-      customerId: activeCustomer?.id,
-      customerPhone: activeCustomer?.phoneNumber,
-      customerName: activeCustomer?.name,
-      lineItems: cart.map(item => ({ productId: item.product.id, quantity: item.quantity })),
-      paymentMethod: paymentDetails.method,
-      taxAmount: getTaxAmount(),
-      discountAmount: getDiscountAmount()
-    }).catch(() => {});
 
     // 2. Persist Store Inventory Stock Deduction in DB & LocalStorage
     cart.forEach(item => {
@@ -520,12 +616,20 @@ export const CashierPosPage: React.FC = () => {
       paymentMode: receiptData.paymentMethod,
       date: receiptData.date,
       itemsCount: receiptData.items.length,
-      items: receiptData.items,
+      items: receiptData.items.map(it => ({
+        product: it.product,
+        quantity: it.quantity,
+        name: it.product.name,
+        price: it.product.globalPrice,
+        total: it.product.globalPrice * it.quantity
+      })),
       subtotal: receiptData.subtotal,
       tax: receiptData.tax,
       discount: receiptData.discount,
       pointsEarned: receiptData.pointsEarned,
-      cashierName: receiptData.cashierName
+      cashierName: receiptData.cashierName,
+      dbTxnId: savedTxn?.id,
+      timestamp: Date.now()
     };
 
     setBillsHistory(prev => {
@@ -596,10 +700,63 @@ TOTAL AMOUNT PAID : ₹${data.total.toFixed(2)}
   // ─── SUB-VIEW: BILLING HISTORY & REPRINT ───
   const renderHistoryView = () => {
     const filteredHistory = billsHistory.filter(b => 
-      b.id.toLowerCase().includes(historySearch.toLowerCase()) || 
-      b.customerName.toLowerCase().includes(historySearch.toLowerCase()) ||
-      b.customerPhone.includes(historySearch)
+      (b.id || '').toLowerCase().includes(historySearch.toLowerCase()) || 
+      (b.customerName || '').toLowerCase().includes(historySearch.toLowerCase()) ||
+      (b.customerPhone || '').includes(historySearch)
     );
+
+    // Compute dynamic real-time shift analytics from actual bills
+    const totalShiftSales = billsHistory.reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
+    const upiSales = billsHistory.filter(b => (b.paymentMode || '').toUpperCase().includes('UPI')).reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
+    const cashSales = billsHistory.filter(b => (b.paymentMode || '').toUpperCase().includes('CASH')).reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
+    const cardSales = billsHistory.filter(b => (b.paymentMode || '').toUpperCase().includes('CARD')).reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
+    const otherSales = Math.max(0, totalShiftSales - upiSales - cashSales - cardSales);
+
+    const hourBuckets: Record<string, { count: number; total: number }> = {
+      '08 AM': { count: 0, total: 0 },
+      '10 AM': { count: 0, total: 0 },
+      '12 PM': { count: 0, total: 0 },
+      '02 PM': { count: 0, total: 0 },
+      '04 PM': { count: 0, total: 0 },
+      '06 PM': { count: 0, total: 0 },
+      '08 PM': { count: 0, total: 0 },
+    };
+
+    billsHistory.forEach(b => {
+      const d = b.timestamp ? new Date(b.timestamp) : new Date(b.date);
+      if (!isNaN(d.getTime())) {
+        const hour = d.getHours();
+        let bucket = '12 PM';
+        if (hour < 9) bucket = '08 AM';
+        else if (hour < 11) bucket = '10 AM';
+        else if (hour < 13) bucket = '12 PM';
+        else if (hour < 15) bucket = '02 PM';
+        else if (hour < 17) bucket = '04 PM';
+        else if (hour < 19) bucket = '06 PM';
+        else bucket = '08 PM';
+        hourBuckets[bucket].count += 1;
+        hourBuckets[bucket].total += Number(b.amount) || 0;
+      }
+    });
+
+    const hourlyData = Object.entries(hourBuckets).map(([label, val]) => ({
+      label,
+      value: val.count,
+      subValue: val.total > 0 ? `₹${val.total >= 1000 ? (val.total / 1000).toFixed(1) + 'k' : val.total.toFixed(0)}` : '₹0'
+    }));
+
+    const paymentSegments = [
+      { label: 'UPI QR', value: upiSales, color: '#D97706' },
+      { label: 'Cash', value: cashSales, color: '#78350F' },
+      { label: 'Card', value: cardSales, color: '#F59E0B' },
+    ];
+    if (otherSales > 0) {
+      paymentSegments.push({ label: 'Other', value: otherSales, color: '#B45309' });
+    }
+
+    const shiftSalesFormatted = totalShiftSales >= 100000 
+      ? `₹${(totalShiftSales / 100000).toFixed(2)}L`
+      : `₹${totalShiftSales.toLocaleString('en-IN')}`;
 
     return (
       <div className="space-y-6">
@@ -608,14 +765,24 @@ TOTAL AMOUNT PAID : ₹${data.total.toFixed(2)}
             <h2 className="font-extrabold text-amber-950 text-base">Customer Bills & Thermal Reprint</h2>
             <p className="text-xs text-stone-500">Search customer receipts by Invoice ID or Mobile Number to reprint bill.</p>
           </div>
-          <div className="w-72 relative">
-            <Search className="w-4 h-4 text-stone-400 absolute left-3 top-2.5" />
-            <input
-              value={historySearch}
-              onChange={e => setHistorySearch(e.target.value)}
-              placeholder="Search phone / Invoice ID..."
-              className="gold-input w-full pl-9 text-xs"
-            />
+          <div className="flex items-center gap-3">
+            <button
+              onClick={refreshBillsHistory}
+              title="Refresh from server"
+              className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-xl transition cursor-pointer border border-amber-200 flex items-center gap-1.5 text-xs font-bold"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Refresh</span>
+            </button>
+            <div className="w-72 relative">
+              <Search className="w-4 h-4 text-stone-400 absolute left-3 top-2.5" />
+              <input
+                value={historySearch}
+                onChange={e => setHistorySearch(e.target.value)}
+                placeholder="Search phone / Invoice ID..."
+                className="gold-input w-full pl-9 text-xs"
+              />
+            </div>
           </div>
         </div>
 
@@ -624,68 +791,65 @@ TOTAL AMOUNT PAID : ₹${data.total.toFixed(2)}
           <div className="lg:col-span-7">
             <BarChartWidget
               title="Shift Hourly Transaction Throughput"
-              subtitle="Number of bills completed per hour on Register #1"
-              data={[
-                { label: '08 AM', value: 12, subValue: '₹8.4k' },
-                { label: '10 AM', value: 28, subValue: '₹19.2k' },
-                { label: '12 PM', value: 45, subValue: '₹34.1k' },
-                { label: '02 PM', value: 32, subValue: '₹22.8k' },
-                { label: '04 PM', value: 58, subValue: '₹41.5k' },
-                { label: '06 PM', value: 64, subValue: '₹51.2k' },
-              ]}
+              subtitle={`Total ${billsHistory.length} bills processed on Register #1`}
+              data={hourlyData}
               valuePrefix=""
             />
           </div>
           <div className="lg:col-span-5">
             <DonutChartWidget
               title="Cashier Payment Mode Split"
-              subtitle="Tender distribution for shift"
+              subtitle="Tender distribution for completed bills"
               centerLabel="SHIFT SALES"
-              centerValue="₹1.77L"
-              segments={[
-                { label: 'UPI QR', value: 85400, color: '#D97706' },
-                { label: 'Cash', value: 52100, color: '#78350F' },
-                { label: 'Card', value: 39700, color: '#F59E0B' },
-              ]}
+              centerValue={shiftSalesFormatted}
+              segments={paymentSegments}
             />
           </div>
         </div>
 
         <div className="gold-card overflow-hidden">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-amber-50/80 text-amber-950 uppercase font-extrabold text-[10px] border-b border-amber-200">
-              <tr>
-                <th className="p-3">Invoice ID</th>
-                <th className="p-3">Customer Name</th>
-                <th className="p-3">Mobile No</th>
-                <th className="p-3">Date & Time</th>
-                <th className="p-3">Mode</th>
-                <th className="p-3 text-right">Amount (₹)</th>
-                <th className="p-3 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100 font-medium text-stone-800">
-              {filteredHistory.map(b => (
-                <tr key={b.id} className="hover:bg-amber-50/40">
-                  <td className="p-3 font-mono font-bold text-amber-900">{b.id}</td>
-                  <td className="p-3 font-bold">{b.customerName}</td>
-                  <td className="p-3 font-mono text-stone-600">{b.customerPhone}</td>
-                  <td className="p-3 text-stone-500 text-[11px]">{b.date}</td>
-                  <td className="p-3"><span className="gold-badge">{b.paymentMode}</span></td>
-                  <td className="p-3 text-right font-black text-amber-900">₹{b.amount.toLocaleString()}</td>
-                  <td className="p-3 text-center">
-                    <button
-                      onClick={() => setSelectedBillForPrint(b)}
-                      className="bg-amber-100 hover:bg-amber-200 text-amber-900 px-3 py-1 rounded-lg font-bold text-[11px] cursor-pointer inline-flex items-center gap-1"
-                    >
-                      <Printer className="w-3 h-3" />
-                      <span>Print Bill</span>
-                    </button>
-                  </td>
+          {filteredHistory.length === 0 ? (
+            <div className="p-12 text-center text-stone-400">
+              <Receipt className="w-12 h-12 mx-auto mb-3 opacity-30 text-amber-600" />
+              <p className="font-bold text-stone-600 text-sm">No Customer Bills Found</p>
+              <p className="text-xs text-stone-400 mt-1">Complete a checkout transaction to record customer invoices here.</p>
+            </div>
+          ) : (
+            <table className="w-full text-left text-xs">
+              <thead className="bg-amber-50/80 text-amber-950 uppercase font-extrabold text-[10px] border-b border-amber-200">
+                <tr>
+                  <th className="p-3">Invoice ID</th>
+                  <th className="p-3">Customer Name</th>
+                  <th className="p-3">Mobile No</th>
+                  <th className="p-3">Date & Time</th>
+                  <th className="p-3">Mode</th>
+                  <th className="p-3 text-right">Amount (₹)</th>
+                  <th className="p-3 text-center">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-stone-100 font-medium text-stone-800">
+                {filteredHistory.map(b => (
+                  <tr key={b.id} className="hover:bg-amber-50/40">
+                    <td className="p-3 font-mono font-bold text-amber-900">{b.id}</td>
+                    <td className="p-3 font-bold">{b.customerName}</td>
+                    <td className="p-3 font-mono text-stone-600">{b.customerPhone}</td>
+                    <td className="p-3 text-stone-500 text-[11px]">{b.date}</td>
+                    <td className="p-3"><span className="gold-badge">{b.paymentMode}</span></td>
+                    <td className="p-3 text-right font-black text-amber-900">₹{Number(b.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td className="p-3 text-center">
+                      <button
+                        onClick={() => setSelectedBillForPrint(b)}
+                        className="bg-amber-100 hover:bg-amber-200 text-amber-900 px-3 py-1 rounded-lg font-bold text-[11px] cursor-pointer inline-flex items-center gap-1"
+                      >
+                        <Printer className="w-3 h-3" />
+                        <span>Print Bill</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
 
         {/* Modal for reprinting history bill */}
@@ -695,7 +859,7 @@ TOTAL AMOUNT PAID : ₹${data.total.toFixed(2)}
               <div className="text-center border-b border-dashed border-stone-400 pb-3">
                 <h3 className="font-extrabold text-sm uppercase">MEGAMART SUPERMARKET</h3>
                 <p className="text-[10px] text-stone-500">GSTIN: 27AAAAA0000A1Z5</p>
-                <p className="text-[10px] text-stone-500">Duplicate Tax Invoice</p>
+                <p className="text-[10px] text-amber-800 font-bold">Duplicate Tax Invoice</p>
               </div>
 
               <div className="space-y-1 text-[11px]">
@@ -706,11 +870,46 @@ TOTAL AMOUNT PAID : ₹${data.total.toFixed(2)}
               </div>
 
               <div className="border-t border-b border-dashed border-stone-400 py-3 space-y-1 text-[11px]">
-                <div className="flex justify-between"><span>Items ({selectedBillForPrint.itemsCount}):</span> <span>₹{(selectedBillForPrint.amount * 0.9).toFixed(2)}</span></div>
-                <div className="flex justify-between"><span>GST (18%):</span> <span>₹{(selectedBillForPrint.amount * 0.1).toFixed(2)}</span></div>
+                {selectedBillForPrint.items && selectedBillForPrint.items.length > 0 ? (
+                  <div className="space-y-1 pb-2">
+                    <div className="flex justify-between text-[10px] font-bold text-stone-500 uppercase pb-1 border-b border-stone-200">
+                      <span>Item</span>
+                      <span>Qty x Price</span>
+                      <span className="text-right">Total</span>
+                    </div>
+                    {selectedBillForPrint.items.map((it: any, idx: number) => {
+                      const itemName = it.product?.name || it.name || `Item #${idx + 1}`;
+                      const qty = it.quantity || it.qty || 1;
+                      const price = Number(it.product?.globalPrice || it.price) || 0;
+                      const lineTotal = Number(it.total) || (qty * price);
+                      return (
+                        <div key={idx} className="flex justify-between text-[11px]">
+                          <span className="truncate max-w-[140px] font-semibold">{itemName}</span>
+                          <span className="text-stone-500">{qty} x ₹{price}</span>
+                          <span className="font-bold text-right">₹{lineTotal.toFixed(2)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
+
+                <div className="flex justify-between">
+                  <span>Subtotal:</span>
+                  <span>₹{(selectedBillForPrint.subtotal || (selectedBillForPrint.amount - (selectedBillForPrint.tax || 0))).toFixed(2)}</span>
+                </div>
+                {Number(selectedBillForPrint.discount) > 0 && (
+                  <div className="flex justify-between text-emerald-700 font-medium">
+                    <span>Discount:</span>
+                    <span>-₹{Number(selectedBillForPrint.discount).toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span>GST / Tax:</span>
+                  <span>₹{Number(selectedBillForPrint.tax || 0).toFixed(2)}</span>
+                </div>
                 <div className="flex justify-between font-black text-sm pt-1 border-t border-dashed border-stone-300">
                   <span>TOTAL PAID:</span>
-                  <span>₹{selectedBillForPrint.amount.toFixed(2)}</span>
+                  <span>₹{Number(selectedBillForPrint.amount).toFixed(2)}</span>
                 </div>
               </div>
 
