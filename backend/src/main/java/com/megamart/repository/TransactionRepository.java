@@ -28,5 +28,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Query("SELECT COALESCE(SUM(t.totalAmount), 0) FROM Transaction t WHERE t.tenantId = :tenantId AND t.storeId = :storeId AND t.type = 'SALE'")
     BigDecimal sumTotalSalesByStore(@Param("tenantId") Long tenantId, @Param("storeId") Long storeId);
 
+    @Query("SELECT COALESCE(SUM(t.totalAmount), 0) FROM Transaction t WHERE t.type = 'SALE'")
+    BigDecimal sumAllSales();
+
     long countByTenantId(Long tenantId);
 }

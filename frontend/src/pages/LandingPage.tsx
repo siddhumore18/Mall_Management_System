@@ -3,10 +3,13 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useRetailStore } from '../store/useRetailStore';
 import { authApi } from '../services/api';
 import { PaymentGatewayModal } from '../components/PaymentGatewayModal';
+import { LegalPoliciesModal, PolicyTab } from '../components/LegalPoliciesModal';
+import { InteractiveProductDemo } from '../components/InteractiveProductDemo';
 import { 
   Building2, Check, ArrowRight, Sparkles, ShoppingBag, 
   Boxes, LayoutDashboard, ShieldCheck, Users, Zap, Award, Star, Globe, Lock, CheckCircle2, ChevronRight,
-  TrendingUp, Clock, Receipt, BarChart3, Shield, LogIn
+  TrendingUp, Clock, Receipt, BarChart3, Shield, LogIn, Phone, Mail, MapPin,
+  FileText, RefreshCcw, Truck
 } from 'lucide-react';
 
 interface Props {
@@ -19,6 +22,33 @@ export const LandingPage: React.FC<Props> = ({ onNavigateLogin }) => {
   const [isAnnual, setIsAnnual] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState<{ id: number; name: string; priceMonthly: number; priceAnnual: number; maxStores: number; maxUsers: number } | null>(null);
   const [showPaymentGateway, setShowPaymentGateway] = useState(false);
+  const [policyModal, setPolicyModal] = useState<{ isOpen: boolean; tab: PolicyTab }>({ isOpen: false, tab: 'privacy' });
+
+  // Deep linking for Razorpay & Stripe compliance: Supports both hashes (#privacy) and paths (/privacy-policy)
+  React.useEffect(() => {
+    const handleUrlChange = () => {
+      const hash = window.location.hash.replace('#', '').toLowerCase();
+      const path = window.location.pathname.toLowerCase();
+      
+      let matchedTab: PolicyTab | null = null;
+      if (hash === 'privacy' || path.includes('privacy')) matchedTab = 'privacy';
+      else if (hash === 'terms' || path.includes('terms')) matchedTab = 'terms';
+      else if (hash === 'refund' || path.includes('refund') || path.includes('cancel')) matchedTab = 'refund';
+      else if (hash === 'shipping' || path.includes('shipping') || path.includes('delivery')) matchedTab = 'shipping';
+      else if (hash === 'contact' || path.includes('contact') || path.includes('support')) matchedTab = 'contact';
+
+      if (matchedTab) {
+        setPolicyModal({ isOpen: true, tab: matchedTab });
+      }
+    };
+    handleUrlChange();
+    window.addEventListener('hashchange', handleUrlChange);
+    window.addEventListener('popstate', handleUrlChange);
+    return () => {
+      window.removeEventListener('hashchange', handleUrlChange);
+      window.removeEventListener('popstate', handleUrlChange);
+    };
+  }, []);
 
   const [companyName, setCompanyName] = useState('');
   const [adminName, setAdminName] = useState('');
@@ -261,6 +291,9 @@ export const LandingPage: React.FC<Props> = ({ onNavigateLogin }) => {
         </div>
       </section>
 
+      {/* Interactive Live Product Tour & Role Simulator Sandbox */}
+      <InteractiveProductDemo />
+
       {/* Subscription Plans Section */}
       <section className="relative z-10 px-6 py-12 max-w-5xl mx-auto">
         <div className="text-center mb-8 space-y-2">
@@ -442,10 +475,132 @@ export const LandingPage: React.FC<Props> = ({ onNavigateLogin }) => {
         />
       )}
 
-      {/* Footer */}
-      <footer className="mt-auto border-t border-stone-200 py-8 px-6 text-center text-xs text-stone-500 bg-white">
-        <p>© 2026 MegaMart.OS Retail SaaS Inc. All rights reserved. Multi-Tenant Enterprise Architecture.</p>
+      {/* Business-Ready Enterprise Compliance Footer */}
+      <footer className="mt-auto border-t border-amber-200/80 bg-white text-stone-600 text-xs">
+        <div className="max-w-7xl mx-auto px-6 py-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          
+          {/* Column 1: Company Profile & Trust Badges */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-600 flex items-center justify-center text-white shadow-md shadow-amber-500/20">
+                <Building2 className="w-4 h-4" />
+              </div>
+              <span className="font-extrabold text-sm text-stone-900 tracking-tight">MEGAMART<span className="text-amber-600">.OS</span></span>
+            </div>
+            <p className="text-[11px] text-stone-500 leading-relaxed">
+              Enterprise Multi-Tenant Supermarket & Hypermarket Retail Operating System. Fully integrated with automated GST accounting, barcode scanning & PCI-DSS payment gateways.
+            </p>
+            <div className="pt-2 flex flex-wrap gap-2 text-[10px] font-bold">
+              <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-1 rounded-md">
+                <ShieldCheck className="w-3 h-3" /> PCI-DSS Level 1
+              </span>
+              <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-800 border border-blue-200 px-2 py-1 rounded-md">
+                <Lock className="w-3 h-3" /> 256-Bit TLS SSL
+              </span>
+            </div>
+          </div>
+
+          {/* Column 2: Platform Capabilities */}
+          <div className="space-y-3">
+            <h4 className="font-bold text-stone-900 text-xs uppercase tracking-wider">Retail Solutions</h4>
+            <ul className="space-y-2 text-[11px] text-stone-600">
+              <li className="flex items-center gap-1.5"><ChevronRight className="w-3 h-3 text-amber-600" /> High-Throughput POS Terminal</li>
+              <li className="flex items-center gap-1.5"><ChevronRight className="w-3 h-3 text-amber-600" /> Multi-Store Inventory & Transfers</li>
+              <li className="flex items-center gap-1.5"><ChevronRight className="w-3 h-3 text-amber-600" /> Customer Loyalty & Directory</li>
+              <li className="flex items-center gap-1.5"><ChevronRight className="w-3 h-3 text-amber-600" /> Automated GST Tax Ledgers</li>
+              <li className="flex items-center gap-1.5"><ChevronRight className="w-3 h-3 text-amber-600" /> FEFO Expiry Waste Prevention</li>
+            </ul>
+          </div>
+
+          {/* Column 3: Mandatory Legal & Compliance (Razorpay & Stripe Ready) */}
+          <div className="space-y-3">
+            <h4 className="font-bold text-stone-900 text-xs uppercase tracking-wider">Legal & Compliance</h4>
+            <p className="text-[10px] text-amber-800 font-medium">Click any document to inspect official policy:</p>
+            <ul className="space-y-2 text-[11px]">
+              <li>
+                <button 
+                  onClick={() => setPolicyModal({ isOpen: true, tab: 'privacy' })}
+                  className="text-stone-600 hover:text-amber-900 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Privacy Policy</span>
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => setPolicyModal({ isOpen: true, tab: 'terms' })}
+                  className="text-stone-600 hover:text-amber-900 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <FileText className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Terms & Conditions (ToS)</span>
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => setPolicyModal({ isOpen: true, tab: 'refund' })}
+                  className="text-stone-600 hover:text-amber-900 hover:underline flex items-center gap-1 cursor-pointer font-semibold text-emerald-800"
+                >
+                  <RefreshCcw className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Cancellation & Refund Policy</span>
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => setPolicyModal({ isOpen: true, tab: 'shipping' })}
+                  className="text-stone-600 hover:text-amber-900 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <Truck className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Shipping & Delivery Policy</span>
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          {/* Column 4: Official Merchant Contact */}
+          <div className="space-y-3">
+            <h4 className="font-bold text-stone-900 text-xs uppercase tracking-wider">Merchant Support</h4>
+            <div className="space-y-2 text-[11px] text-stone-600">
+              <p className="flex items-start gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-amber-700 shrink-0 mt-0.5" />
+                <span>Level 4, High Street Tech Park, Bandra West, Mumbai 400050</span>
+              </p>
+              <p className="flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                <a href="mailto:support@megamart.com" className="hover:text-amber-900 hover:underline">support@megamart.com</a>
+              </p>
+              <p className="flex items-center gap-1.5">
+                <Phone className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                <span>+91 (022) 8920-4000</span>
+              </p>
+              <button
+                onClick={() => setPolicyModal({ isOpen: true, tab: 'contact' })}
+                className="mt-2 w-full py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-xl font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1"
+              >
+                <span>Contact & Grievance Desk</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Bottom Bar */}
+        <div className="border-t border-stone-200 py-4 px-6 bg-stone-50/70 text-center text-[11px] text-stone-500 flex flex-col md:flex-row items-center justify-between max-w-7xl mx-auto gap-2">
+          <p>© 2026 MegaMart Retail Technologies Pvt. Ltd. All rights reserved. GSTIN: 27AAAAA0000A1Z5.</p>
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] text-stone-400">Accepted Gateways:</span>
+            <span className="font-bold text-stone-700">Razorpay (UPI / NetBanking)</span>
+            <span>•</span>
+            <span className="font-bold text-stone-700">Stripe (Visa / Mastercard)</span>
+          </div>
+        </div>
       </footer>
+
+      {/* Mandatory Legal Policy Modal */}
+      <LegalPoliciesModal
+        isOpen={policyModal.isOpen}
+        onClose={() => setPolicyModal(prev => ({ ...prev, isOpen: false }))}
+        initialTab={policyModal.tab}
+      />
     </div>
   );
 };

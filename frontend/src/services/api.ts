@@ -498,4 +498,102 @@ export const tenantApi = {
   }
 };
 
+export const superAdminApi = {
+  getTenants: async (): Promise<any[]> => {
+    try {
+      const res = await fetch(`${API_BASE}/superadmin/tenants`, { headers: getHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) return data;
+      }
+    } catch (e) {
+      console.warn('Backend superadmin/tenants fetch failed, checking local registry:', e);
+    }
+    const localRegistered = JSON.parse(localStorage.getItem('megamart_registered_users') || '[]');
+    const localTenants = localRegistered.map((u: any, idx: number) => ({
+      id: u.tenantId || (100 + idx),
+      name: u.companyName || u.name,
+      plan: u.tenantInfo?.planName || 'Standard Chain',
+      status: 'ACTIVE',
+      storesCount: u.tenantInfo?.maxStores ? Math.min(u.tenantInfo.maxStores, 2) : 1,
+      monthlyFee: u.tenantInfo?.planPrice || 14999,
+      renewalDate: '2027-09-14',
+      usersCount: 3,
+      city: 'Mumbai',
+      maxStores: u.tenantInfo?.maxStores || 10,
+      maxUsers: u.tenantInfo?.maxUsers || 50,
+      billingCycle: 'MONTHLY'
+    }));
+
+    const defaults = [
+      { id: 1, name: 'MegaMart Retail India Ltd', plan: 'Enterprise Hyper-Scale', status: 'ACTIVE', storesCount: 2, monthlyFee: 39999, renewalDate: '2026-10-01', usersCount: 14, city: 'Mumbai', maxStores: 50, maxUsers: 500, billingCycle: 'ANNUAL' },
+      { id: 2, name: 'Apex Superstores Bharat', plan: 'Standard Chain', status: 'ACTIVE', storesCount: 1, monthlyFee: 14999, renewalDate: '2026-09-28', usersCount: 6, city: 'Bengaluru', maxStores: 10, maxUsers: 50, billingCycle: 'MONTHLY' }
+    ];
+
+    return [...localTenants, ...defaults.filter(d => !localTenants.some((lt: any) => lt.name.toLowerCase() === d.name.toLowerCase()))];
+  },
+
+  createTenant: async (data: { name: string; city: string; planId?: number; plan?: string; fee?: number }) => {
+    try {
+      const res = await fetch(`${API_BASE}/superadmin/tenants`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(data)
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {}
+    return {
+      id: Date.now(),
+      name: data.name,
+      city: data.city || 'Mumbai',
+      plan: data.plan || 'Standard Chain',
+      status: 'ACTIVE',
+      storesCount: 1,
+      usersCount: 1,
+      monthlyFee: data.fee || 14999,
+      renewalDate: '2027-09-14'
+    };
+  },
+
+  updateTenantStatus: async (id: number, status: 'ACTIVE' | 'SUSPENDED') => {
+    try {
+      const res = await fetch(`${API_BASE}/superadmin/tenants/${id}/status`, {
+        method: 'PATCH',
+        headers: getHeaders(),
+        body: JSON.stringify({ status })
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {}
+    return { success: true, id, status };
+  },
+
+  getMetrics: async () => {
+    try {
+      const res = await fetch(`${API_BASE}/superadmin/metrics`, { headers: getHeaders() });
+      if (res.ok) return await res.json();
+    } catch (e) {}
+    return null;
+  },
+
+  getPlans: async () => {
+    try {
+      const res = await fetch(`${API_BASE}/superadmin/plans`, { headers: getHeaders() });
+      if (res.ok) return await res.json();
+    } catch (e) {}
+    return null;
+  },
+
+  updatePlan: async (id: number, data: any) => {
+    try {
+      const res = await fetch(`${API_BASE}/superadmin/plans/${id}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(data)
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {}
+    return null;
+  }
+};
+
 

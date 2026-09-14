@@ -65,6 +65,7 @@ public class SecurityConfig {
                     "/api/v1/ai/**",
                     "/api/payments/**",
                     "/api/v1/payments/**",
+                    "/api/v1/superadmin/**",
                     "/h2-console/**",
                     "/actuator/**",
                     "/error"

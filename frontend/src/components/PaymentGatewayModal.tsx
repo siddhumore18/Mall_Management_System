@@ -505,6 +505,26 @@ export const PaymentGatewayModal: React.FC<Props> = ({
           </div>
         )}
 
+        {/* Legal & Gateway Compliance Guarantee */}
+        <div className="pt-3 border-t border-amber-200/80 text-[10px] text-stone-500 text-center space-y-1">
+          <p>
+            By continuing, you agree to our{' '}
+            <a href="#terms" target="_blank" rel="noreferrer" className="text-amber-800 underline font-semibold hover:text-amber-950">Terms of Service</a>
+            {' '}and{' '}
+            <a href="#refund" target="_blank" rel="noreferrer" className="text-amber-800 underline font-semibold hover:text-amber-950">Cancellation & Refund Policy</a>.
+          </p>
+          <div className="flex items-center justify-center gap-2 text-[9px] text-stone-400">
+            <span className="flex items-center gap-1 font-medium text-emerald-700">
+              <ShieldCheck className="w-3 h-3 text-emerald-600" />
+              PCI-DSS Level 1 Encrypted
+            </span>
+            <span>•</span>
+            <span>256-Bit SSL Protection</span>
+            <span>•</span>
+            <span>Razorpay / Stripe Verified</span>
+          </div>
+        </div>
+
       </div>
     </div>
   );

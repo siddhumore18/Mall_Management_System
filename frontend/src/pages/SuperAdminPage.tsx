@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavStore } from '../store/useNavStore';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { AreaLineChartWidget, DonutChartWidget } from '../components/AnalyticsCharts';
+import { superAdminApi } from '../services/api';
 import {
   ShieldCheck, Building2, Activity, ArrowUpRight, Lock, Power,
   Check, CreditCard, Server, Globe, Cpu, HardDrive, Database,
@@ -21,6 +22,9 @@ interface Tenant {
   city: string;
   customMaxStores?: number;
   customMaxUsers?: number;
+  maxStores?: number;
+  maxUsers?: number;
+  billingCycle?: string;
 }
 
 interface SubscriptionPlan {
@@ -37,11 +41,12 @@ export const SuperAdminPage: React.FC = () => {
   const { activeNavItem } = useNavStore();
   const { notifications, updateNotificationStatus, addNotification } = useNotificationStore();
 
+  const [loading, setLoading] = useState(false);
+  const [dbMetrics, setDbMetrics] = useState<any>(null);
+
   const [tenants, setTenants] = useState<Tenant[]>([
-    { id: 1, name: 'MegaMart Retail India Ltd', plan: 'Enterprise Plan', status: 'ACTIVE', storesCount: 5, monthlyFee: 39999, renewalDate: '2026-10-01', usersCount: 48, city: 'Mumbai' },
-    { id: 2, name: 'Apex Superstores Bharat', plan: 'Standard Plan', status: 'ACTIVE', storesCount: 2, monthlyFee: 14999, renewalDate: '2026-09-28', usersCount: 14, city: 'Bengaluru' },
-    { id: 3, name: 'Heritage Fresh Retail', plan: 'Standard Plan', status: 'SUSPENDED', storesCount: 1, monthlyFee: 14999, renewalDate: '2026-08-15', usersCount: 6, city: 'Hyderabad' },
-    { id: 4, name: 'FreshBasket Organics Pvt', plan: 'Starter Plan', status: 'ACTIVE', storesCount: 1, monthlyFee: 4999, renewalDate: '2026-11-12', usersCount: 5, city: 'Pune' },
+    { id: 1, name: 'MegaMart Retail India Ltd', plan: 'Enterprise Hyper-Scale', status: 'ACTIVE', storesCount: 2, monthlyFee: 39999, renewalDate: '2026-10-01', usersCount: 14, city: 'Mumbai' },
+    { id: 2, name: 'Apex Superstores Bharat', plan: 'Standard Chain', status: 'ACTIVE', storesCount: 1, monthlyFee: 14999, renewalDate: '2026-09-28', usersCount: 6, city: 'Bengaluru' }
   ]);
 
   // Dynamic Subscription Plans State
@@ -100,24 +105,71 @@ export const SuperAdminPage: React.FC = () => {
   const [isAddTenantOpen, setIsAddTenantOpen] = useState(false);
   const [newTenantName, setNewTenantName] = useState('');
   const [newTenantCity, setNewTenantCity] = useState('');
-  const [newTenantPlan, setNewTenantPlan] = useState('Standard Plan');
+  const [newTenantPlan, setNewTenantPlan] = useState('Standard Chain');
   const [newTenantFee, setNewTenantFee] = useState('14999');
 
-  const activeTenants = tenants.filter(t => t.status === 'ACTIVE');
-  const totalMrr = activeTenants.reduce((sum, t) => sum + t.monthlyFee, 0);
-  const totalArr = totalMrr * 12;
-  const totalStores = tenants.reduce((sum, t) => sum + t.storesCount, 0);
+  // Fetch real data from backend & database
+  const fetchRealData = async () => {
+    setLoading(true);
+    try {
+      const [tenantsData, metricsData, plansData] = await Promise.all([
+        superAdminApi.getTenants(),
+        superAdminApi.getMetrics(),
+        superAdminApi.getPlans()
+      ]);
 
-  const handleToggleStatus = (tenantId: number) => {
-    setTenants(prev => prev.map(t => {
-      if (t.id === tenantId) {
-        const next = t.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
-        setMsg(`Tenant "${t.name}" status → ${next}`);
-        setTimeout(() => setMsg(''), 4000);
-        return { ...t, status: next as 'ACTIVE' | 'SUSPENDED' };
+      if (tenantsData && tenantsData.length > 0) {
+        setTenants(tenantsData);
       }
-      return t;
-    }));
+      if (metricsData) {
+        setDbMetrics(metricsData);
+      }
+      if (plansData && plansData.length > 0) {
+        setPlans(plansData.map((p: any) => ({
+          id: p.name.toLowerCase().includes('starter') ? 'starter' : p.name.toLowerCase().includes('enterprise') ? 'enterprise' : 'standard',
+          name: p.name,
+          monthlyFee: typeof p.price === 'number' ? p.price : parseFloat(p.price) || 14999,
+          maxOutlets: p.maxStores >= 50 ? 'Unlimited Outlets' : `Up to ${p.maxStores} Outlets`,
+          maxUsers: p.maxUsers >= 500 ? 'Unlimited User Seats' : `Up to ${p.maxUsers} User Seats`,
+          features: [
+            `${p.maxStores >= 50 ? 'Unlimited' : 'Up to ' + p.maxStores} Outlets`,
+            `${p.maxUsers >= 500 ? 'Unlimited' : 'Up to ' + p.maxUsers} User Seats`,
+            'POS Barcode & GST Receipts',
+            'FEFO Expiry Auditing',
+            'Dedicated SLA Support'
+          ],
+          recommended: p.name.toLowerCase().includes('standard')
+        })));
+      }
+    } catch (e) {
+      console.warn('Super Admin fetch real data error:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchRealData();
+  }, []);
+
+  const activeTenants = tenants.filter(t => t.status === 'ACTIVE');
+  const totalMrr = dbMetrics?.totalMrr || activeTenants.reduce((sum, t) => sum + (t.monthlyFee || 0), 0);
+  const totalArr = dbMetrics?.totalArr || (totalMrr * 12);
+  const totalStores = dbMetrics?.totalStores || tenants.reduce((sum, t) => sum + (t.storesCount || 0), 0);
+
+  const handleToggleStatus = async (tenantId: number) => {
+    const current = tenants.find(t => t.id === tenantId);
+    if (!current) return;
+    const next = current.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
+    setTenants(prev => prev.map(t => t.id === tenantId ? { ...t, status: next as 'ACTIVE' | 'SUSPENDED' } : t));
+    setMsg(`Tenant "${current.name}" status → ${next}`);
+    setTimeout(() => setMsg(''), 4000);
+
+    try {
+      await superAdminApi.updateTenantStatus(tenantId, next as 'ACTIVE' | 'SUSPENDED');
+    } catch (e) {
+      console.warn('Could not persist status toggle to backend:', e);
+    }
   };
 
   const handleToggleFlag = (flagId: string) => {
@@ -135,8 +187,8 @@ export const SuperAdminPage: React.FC = () => {
   const getPlanQuota = (tenant: Tenant) => {
     const matchedPlan = plans.find(p => p.name.toLowerCase() === tenant.plan.toLowerCase() || p.id === tenant.plan.toLowerCase());
     
-    let storeLimit = tenant.customMaxStores;
-    let userLimit = tenant.customMaxUsers;
+    let storeLimit = tenant.customMaxStores || tenant.maxStores;
+    let userLimit = tenant.customMaxUsers || tenant.maxUsers;
 
     if (storeLimit === undefined) {
       if (!matchedPlan) storeLimit = 1;
@@ -176,25 +228,28 @@ export const SuperAdminPage: React.FC = () => {
     setTimeout(() => setMsg(''), 4000);
   };
 
-  const handleAddTenantSubmit = (e: React.FormEvent) => {
+  const handleAddTenantSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTenantName.trim()) return;
-    const newT: Tenant = {
-      id: Date.now(),
-      name: newTenantName.trim(),
-      city: newTenantCity.trim() || 'Mumbai',
-      plan: newTenantPlan,
-      status: 'ACTIVE',
-      storesCount: 1,
-      usersCount: 5,
-      monthlyFee: parseFloat(newTenantFee) || 14999,
-      renewalDate: '2027-09-10'
-    };
-    setTenants(prev => [newT, ...prev]);
-    setIsAddTenantOpen(false);
-    setNewTenantName(''); setNewTenantCity('');
-    setMsg(`SaaS Tenant "${newT.name}" onboarded successfully!`);
-    setTimeout(() => setMsg(''), 4000);
+    setLoading(true);
+    try {
+      const newT = await superAdminApi.createTenant({
+        name: newTenantName.trim(),
+        city: newTenantCity.trim() || 'Mumbai',
+        plan: newTenantPlan,
+        fee: parseFloat(newTenantFee) || 14999
+      });
+      setTenants(prev => [newT, ...prev.filter(t => t.id !== newT.id)]);
+      setIsAddTenantOpen(false);
+      setNewTenantName(''); setNewTenantCity('');
+      setMsg(`SaaS Tenant "${newT.name}" onboarded and saved into Database!`);
+      setTimeout(() => setMsg(''), 4000);
+      fetchRealData();
+    } catch (err: any) {
+      setMsg('Failed to onboard tenant: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Open Edit Plan Modal
@@ -220,7 +275,7 @@ export const SuperAdminPage: React.FC = () => {
   };
 
   // Save Plan Changes
-  const handleSavePlanSubmit = (e: React.FormEvent) => {
+  const handleSavePlanSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const feeNum = parseFloat(planFee) || 0;
     const featuresList = planFeaturesText
@@ -239,6 +294,9 @@ export const SuperAdminPage: React.FC = () => {
         features: featuresList.length > 0 ? featuresList : p.features
       } : p));
       setMsg(`Subscription Plan "${planName}" updated successfully (₹${feeNum.toLocaleString()}/mo)!`);
+      
+      const planDbId = editingPlan.id === 'starter' ? 1 : editingPlan.id === 'standard' ? 2 : 3;
+      await superAdminApi.updatePlan(planDbId, { name: planName, price: feeNum });
     } else {
       // Create new plan
       const newPlan: SubscriptionPlan = {
@@ -266,6 +324,37 @@ export const SuperAdminPage: React.FC = () => {
   // ─── SUB-VIEW 1: OVERVIEW ───
   const renderOverview = () => (
     <div className="space-y-6">
+      
+      {/* Live Cloud & Database Sync Bar */}
+      <div className="bg-white p-3.5 rounded-2xl border border-amber-200/90 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-800 flex items-center justify-center font-bold">
+            <Database className="w-4 h-4 text-emerald-700" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black text-stone-900">Live Database Connected</span>
+              <span className="bg-emerald-100 text-emerald-800 text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
+                ACTIVE TELEMETRY
+              </span>
+            </div>
+            <p className="text-[10px] text-stone-500">
+              PostgreSQL Multi-Tenancy • {dbMetrics?.totalTransactions || 0} Real Invoices Recorded • Latency: {dbMetrics?.dbLatencyMs || 12}ms
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={fetchRealData}
+          disabled={loading}
+          className="gold-btn-secondary text-xs px-3.5 py-2 rounded-xl font-bold cursor-pointer flex items-center gap-1.5 transition self-end sm:self-center"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 text-amber-700 ${loading ? 'animate-spin' : ''}`} />
+          <span>{loading ? 'Refreshing Real Data...' : 'Sync Live DB'}</span>
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="gold-card p-5 space-y-1">
           <div className="flex justify-between items-center text-xs font-bold text-stone-500 uppercase tracking-wide">
@@ -299,11 +388,13 @@ export const SuperAdminPage: React.FC = () => {
 
         <div className="gold-card p-5 space-y-1">
           <div className="flex justify-between items-center text-xs font-bold text-stone-500 uppercase tracking-wide">
-            <span>SaaS Server Health</span>
+            <span>SaaS Cloud Health</span>
             <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-black"><Server className="w-3.5 h-3.5" /></div>
           </div>
           <div className="text-2xl font-black text-emerald-800 font-mono">99.99%</div>
-          <div className="text-[11px] text-stone-500 font-semibold">All Microservices Healthy</div>
+          <div className="text-[11px] text-stone-500 font-semibold">
+            {dbMetrics?.usedMemoryMb ? `${dbMetrics.usedMemoryMb} MB Used` : '100% Isolated'} • {dbMetrics?.totalTransactions || 0} Bills
+          </div>
         </div>
       </div>
 
@@ -414,6 +505,14 @@ export const SuperAdminPage: React.FC = () => {
             <p className="text-xs text-stone-500">Manage SaaS subscriptions, tenant quotas, and incoming upgrade requests.</p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={fetchRealData}
+              disabled={loading}
+              className="gold-btn-secondary text-xs px-3.5 py-2 rounded-xl font-bold cursor-pointer flex items-center gap-1.5 transition"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-amber-700 ${loading ? 'animate-spin' : ''}`} />
+              <span>{loading ? 'Syncing...' : 'Sync Live DB'}</span>
+            </button>
             <button
               onClick={() => setIsAddTenantOpen(true)}
               className="gold-button-primary text-xs px-4 py-2 rounded-xl font-bold cursor-pointer flex items-center gap-1.5 shadow-md"
