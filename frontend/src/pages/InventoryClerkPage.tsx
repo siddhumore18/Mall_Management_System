@@ -6,7 +6,7 @@ import { BarChartWidget, DonutChartWidget } from '../components/AnalyticsCharts'
 import { productApi } from '../services/api';
 import { Product } from '../types';
 import { getExpiryInfo, getExpiryStatus } from '../utils/fefo';
-import { autoExtractProductFromBarcode } from '../utils/gs1BarcodeParser';
+import { autoExtractProductFromBarcode, parseGs1BarcodeString, GS1_GLOBAL_BARCODE_REGISTRY } from '../utils/gs1BarcodeParser';
 import { CameraBarcodeScannerModal } from '../components/CameraBarcodeScannerModal';
 import { ProductOnboardingModal } from '../components/ProductOnboardingModal';
 import {
@@ -153,14 +153,15 @@ export const InventoryClerkPage: React.FC = () => {
 
     if (!targetItem) {
       // 2. Uncataloged Custom Item: Onboard with Custom Title, Price, Category & Barcode
-      const cleanCode = poVerifyBarcode.trim() || (isNaN(Number(cleanSearch)) ? `GTIN-${Date.now().toString().slice(-8)}` : cleanSearch);
+      const parsedVerify = parseGs1BarcodeString(poVerifyBarcode);
+      const cleanCode = (parsedVerify.gtin || poVerifyBarcode.trim()) || (isNaN(Number(cleanSearch)) ? `GTIN-${Date.now().toString().slice(-8)}` : cleanSearch);
       const customTitle = isNaN(Number(cleanSearch)) ? cleanSearch : `Custom SKU #${cleanSearch.slice(-6)}`;
       const sellingPriceNum = parseFloat(customPrice) || 150;
       const costPriceNum = parseFloat(customCost) || 100;
 
       targetItem = {
         id: Date.now(),
-        tenantId: 1,
+        tenantId: user?.tenantId || 1,
         barcode: cleanCode,
         sku: `SKU-${cleanCode.slice(-6)}`,
         name: customTitle,
@@ -182,8 +183,9 @@ export const InventoryClerkPage: React.FC = () => {
       addProduct(targetItem);
     } else {
       // Barcode match verification if barcode input was filled
-      const cleanScan = poVerifyBarcode.trim();
-      if (cleanScan && cleanScan !== targetItem.barcode && !cleanScan.includes(targetItem.barcode)) {
+      const parsedScan = parseGs1BarcodeString(poVerifyBarcode);
+      const cleanScan = parsedScan.gtin || poVerifyBarcode.trim();
+      if (cleanScan && cleanScan !== targetItem.barcode && !cleanScan.includes(targetItem.barcode) && !targetItem.barcode.includes(cleanScan)) {
         setPoBarcodeError(`⛔ BARCODE MISMATCH: Scanned barcode "${cleanScan}" does NOT match expected GTIN "${targetItem.barcode}"! Please verify item.`);
         return;
       }
@@ -445,8 +447,10 @@ export const InventoryClerkPage: React.FC = () => {
           isOpen={isCameraScannerOpen}
           onClose={() => setIsCameraScannerOpen(false)}
           onScanSuccess={(scannedBarcode) => {
-            setGs1Input(scannedBarcode);
-            const autoResult = autoExtractProductFromBarcode(scannedBarcode);
+            const parsed = parseGs1BarcodeString(scannedBarcode);
+            const actualCode = parsed.gtin || scannedBarcode.trim();
+            setGs1Input(actualCode);
+            const autoResult = autoExtractProductFromBarcode(scannedBarcode, user?.tenantId || 1);
             setAutoIntakePreview(autoResult.product);
             setMsg(autoResult.message);
             setTimeout(() => setMsg(''), 5000);
@@ -604,14 +608,28 @@ export const InventoryClerkPage: React.FC = () => {
                 <input
                   value={poVerifyBarcode}
                   onChange={e => {
-                    const code = e.target.value;
-                    setPoVerifyBarcode(code);
+                    const rawVal = e.target.value;
+                    const parsed = parseGs1BarcodeString(rawVal);
+                    const actualCode = parsed.gtin || rawVal.trim();
+                    setPoVerifyBarcode(actualCode);
                     setPoBarcodeError('');
+                    if (parsed.batchNumber) setPoBatch(parsed.batchNumber);
+                    if (parsed.expiryDate) setPoExpiry(parsed.expiryDate);
+
                     // Auto-sync search box if scanned barcode matches an existing catalog item
-                    const match = items.find(it => it.barcode === code.trim());
+                    const match = items.find(it => it.barcode === actualCode || (it.barcode && actualCode.includes(it.barcode)));
                     if (match) {
                       setPoProductSearch(match.name);
                       setSelectedPoProductItem(match);
+                    } else {
+                      const master = GS1_GLOBAL_BARCODE_REGISTRY[actualCode];
+                      if (master) {
+                        setPoProductSearch(master.name);
+                        setCustomPrice(master.globalPrice.toString());
+                        setCustomCost(master.costPrice.toString());
+                        setCustomCategory(master.category);
+                        setCustomUnit(master.unit);
+                      }
                     }
                   }}
                   placeholder="Scan or type barcode to verify physical item (e.g. 8901234567890 or 9788...)..."
@@ -631,26 +649,28 @@ export const InventoryClerkPage: React.FC = () => {
             {/* Live Verification Status Indicator */}
             {poVerifyBarcode.trim() ? (
               (() => {
-                const target = selectedPoProductItem || items.find(it => it.name === poProductSearch || it.barcode === poVerifyBarcode.trim());
-                if (target && (poVerifyBarcode.trim() === target.barcode || poVerifyBarcode.trim().includes(target.barcode))) {
+                const parsed = parseGs1BarcodeString(poVerifyBarcode);
+                const actualBarcode = parsed.gtin || poVerifyBarcode.trim();
+                const target = selectedPoProductItem || items.find(it => it.name.toLowerCase() === poProductSearch.toLowerCase() || it.barcode === actualBarcode || (it.barcode && actualBarcode.includes(it.barcode)));
+                if (target && (actualBarcode === target.barcode || actualBarcode.includes(target.barcode) || target.barcode.includes(actualBarcode))) {
                   return (
                     <div className="p-2 bg-emerald-100 border border-emerald-400 text-emerald-900 font-bold rounded-lg text-[11px] flex items-center gap-1.5 animate-slide-up">
                       <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
-                      <span>MATCH VERIFIED: Physical Barcode #{poVerifyBarcode.trim()} matches product GTIN ({target.name})!</span>
+                      <span>MATCH VERIFIED: Physical Barcode #{actualBarcode} matches product GTIN ({target.name})!</span>
                     </div>
                   );
                 } else if (!target) {
                   return (
                     <div className="p-2 bg-amber-100 border border-amber-400 text-amber-950 font-bold rounded-lg text-[11px] flex items-center gap-1.5 animate-slide-up">
                       <Sparkles className="w-4 h-4 text-amber-700 shrink-0" />
-                      <span>AUTO-INTAKE: Uncataloged GTIN #{poVerifyBarcode.trim()} will be auto-cataloged and stock received!</span>
+                      <span>AUTO-INTAKE: Uncataloged GTIN #{actualBarcode} will be auto-cataloged and stock received!</span>
                     </div>
                   );
                 } else {
                   return (
                     <div className="p-2 bg-rose-100 border border-rose-400 text-rose-900 font-bold rounded-lg text-[11px] flex items-center gap-1.5 animate-slide-up">
                       <AlertTriangle className="w-4 h-4 text-rose-700 shrink-0" />
-                      <span>MISMATCH: Scanned #{poVerifyBarcode.trim()} does NOT match selected catalog GTIN ({target.barcode})!</span>
+                      <span>MISMATCH: Scanned #{actualBarcode} does NOT match selected catalog GTIN ({target.barcode})!</span>
                     </div>
                   );
                 }
@@ -753,8 +773,41 @@ export const InventoryClerkPage: React.FC = () => {
           isOpen={isPoCameraOpen}
           onClose={() => setIsPoCameraOpen(false)}
           onScanSuccess={(scannedText) => {
-            setPoVerifyBarcode(scannedText);
+            const parsed = parseGs1BarcodeString(scannedText);
+            const actualCode = parsed.gtin || scannedText.trim();
+            setPoVerifyBarcode(actualCode);
             setPoBarcodeError('');
+
+            // Auto-fill batch if extracted from GS1
+            if (parsed.batchNumber) {
+              setPoBatch(parsed.batchNumber);
+            }
+            // Auto-fill expiry if extracted from GS1
+            if (parsed.expiryDate) {
+              setPoExpiry(parsed.expiryDate);
+            }
+
+            // Auto-match against existing catalog items
+            const matchedItem = items.find(it => it.barcode === actualCode || (it.barcode && actualCode.includes(it.barcode)) || (it.barcode && it.barcode.includes(actualCode)));
+            if (matchedItem) {
+              setPoProductSearch(matchedItem.name);
+              setSelectedPoProductItem(matchedItem);
+            } else {
+              // Also check global GS1 registry
+              const master = GS1_GLOBAL_BARCODE_REGISTRY[actualCode];
+              if (master) {
+                setPoProductSearch(master.name);
+                setCustomPrice(master.globalPrice.toString());
+                setCustomCost(master.costPrice.toString());
+                setCustomCategory(master.category);
+                setCustomUnit(master.unit);
+                if (!parsed.expiryDate) {
+                  const d = new Date();
+                  d.setDate(d.getDate() + master.defaultShelfLifeDays);
+                  setPoExpiry(d.toISOString().split('T')[0]);
+                }
+              }
+            }
           }}
           title="Verify Physical Barcode for Inward PO"
           continuousMode={false}

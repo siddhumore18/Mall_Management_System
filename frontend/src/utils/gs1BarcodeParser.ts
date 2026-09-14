@@ -133,7 +133,13 @@ const gs1ParseCache = new Map<string, Gs1ParseResult>();
  * AI (10): Batch / Lot Number
  */
 export const parseGs1BarcodeString = (rawInput: string): Gs1ParseResult => {
-  const clean = rawInput.trim();
+  if (!rawInput) {
+    return { gtin: '', rawParsed: false };
+  }
+
+  // Clean raw string and strip scanner symbology identifier prefixes like ]C1, ]e0, ]d2, and GS (0x1D) separators
+  let clean = rawInput.trim().replace(/^\][a-zA-Z0-9]{2}/, '').replace(/[\u001d\x1d]/g, '');
+
   if (gs1ParseCache.has(clean)) {
     return gs1ParseCache.get(clean)!;
   }
@@ -144,25 +150,51 @@ export const parseGs1BarcodeString = (rawInput: string): Gs1ParseResult => {
   let rawParsed = false;
 
   // 1. GS1 Parenthesis Format: (01)8901234567891(17)260914(10)BATCH-B11
-  const gtinMatch = clean.match(/\(01\)(\d{13,14})/);
+  const gtinMatch = clean.match(/\(01\)(\d{8,14})/);
   const expMatch = clean.match(/\(17\)(\d{6})/);
-  const batchMatch = clean.match(/\(10\)([A-Za-z0-9\-]+)/);
+  const batchMatch = clean.match(/\(10\)([A-Za-z0-9\-_]+)/);
 
   if (gtinMatch) {
-    gtin = gtinMatch[1].length === 14 && gtinMatch[1].startsWith('0') ? gtinMatch[1].substring(1) : gtinMatch[1];
+    gtin = gtinMatch[1];
+    // Strip leading 0 from 14-digit GTIN-14 to get standard 13-digit EAN
+    if (gtin.length === 14 && gtin.startsWith('0')) {
+      gtin = gtin.substring(1);
+    }
     rawParsed = true;
+  } else if (/^01\d{8,14}/.test(clean)) {
+    // 2. Raw GS1 string without brackets: 01089012345678901726091410BATCH1 or 018901234567890...
+    const rawGtinMatch = clean.match(/^01(\d{13,14})/);
+    if (rawGtinMatch) {
+      const rawGtin = rawGtinMatch[1];
+      gtin = (rawGtin.length === 14 && rawGtin.startsWith('0')) ? rawGtin.substring(1) : rawGtin;
+      const remainder = clean.substring(2 + rawGtin.length);
+      const rawExpMatch = remainder.match(/17(\d{6})/);
+      if (rawExpMatch) {
+        const yy = rawExpMatch[1].substring(0, 2);
+        const mm = rawExpMatch[1].substring(2, 4);
+        const dd = rawExpMatch[1].substring(4, 6);
+        expiryDate = `20${yy}-${mm}-${dd}`;
+      }
+      const rawBatchMatch = remainder.match(/10([A-Za-z0-9\-_]+)/);
+      if (rawBatchMatch) {
+        batchNumber = rawBatchMatch[1];
+      }
+      rawParsed = true;
+    }
   } else {
-    // Standard 13-digit EAN barcode or plain string
+    // 3. Plain EAN-13, EAN-8, UPC-A, UPC-E or Alphanumeric Barcode
     const digitsOnly = clean.replace(/\D/g, '');
-    if (digitsOnly.length >= 12) {
-      gtin = digitsOnly.length === 14 && digitsOnly.startsWith('0') ? digitsOnly.substring(1) : digitsOnly;
+    if (digitsOnly.length === 14 && digitsOnly.startsWith('0')) {
+      gtin = digitsOnly.substring(1);
+    } else if (digitsOnly.length >= 8 && digitsOnly.length <= 13) {
+      gtin = digitsOnly;
     } else {
       gtin = clean;
     }
   }
 
-  // Parse Expiry Date from AI (17) -> YYMMDD
-  if (expMatch) {
+  // Parse Expiry Date from AI (17) -> YYMMDD if found
+  if (expMatch && !expiryDate) {
     const yy = expMatch[1].substring(0, 2);
     const mm = expMatch[1].substring(2, 4);
     const dd = expMatch[1].substring(4, 6);
@@ -170,8 +202,8 @@ export const parseGs1BarcodeString = (rawInput: string): Gs1ParseResult => {
     rawParsed = true;
   }
 
-  // Parse Batch Number from AI (10)
-  if (batchMatch) {
+  // Parse Batch Number from AI (10) if found
+  if (batchMatch && !batchNumber) {
     batchNumber = batchMatch[1];
     rawParsed = true;
   }
@@ -185,28 +217,27 @@ export const parseGs1BarcodeString = (rawInput: string): Gs1ParseResult => {
  * 0-Manual Auto-Intake Engine:
  * Converts raw barcode input into a fully populated Product object with 0 typing required!
  */
-export const autoExtractProductFromBarcode = (rawInput: string): { product: Product; isAutoCataloged: boolean; message: string } => {
+export const autoExtractProductFromBarcode = (rawInput: string, tenantId: number = 1): { product: Product; isAutoCataloged: boolean; message: string } => {
   const parsed = parseGs1BarcodeString(rawInput);
-  const targetGtin = parsed.gtin || rawInput;
+  const targetGtin = parsed.gtin || rawInput.trim();
 
   // 1. Query Master GS1 Registry
   const masterEntry = GS1_GLOBAL_BARCODE_REGISTRY[targetGtin];
 
   if (masterEntry) {
-    // Calculate expiration date automatically if not embedded in GS1 AI (17)
     let finalExpiry = parsed.expiryDate;
     if (!finalExpiry) {
-      const today = new Date('2026-09-11');
+      const today = new Date();
       today.setDate(today.getDate() + masterEntry.defaultShelfLifeDays);
       finalExpiry = today.toISOString().split('T')[0];
     }
 
-    const finalBatch = parsed.batchNumber || `BATCH-AUTO-${Math.floor(100 + Math.random() * 900)}`;
+    const finalBatch = parsed.batchNumber || `BATCH-${Math.floor(100 + Math.random() * 900)}`;
 
     const autoProduct: Product = {
       id: Date.now() + Math.floor(Math.random() * 1000),
-      tenantId: 1,
-      barcode: masterEntry.barcode,
+      tenantId: tenantId,
+      barcode: targetGtin,
       sku: masterEntry.sku,
       name: masterEntry.name,
       category: masterEntry.category,
@@ -227,22 +258,22 @@ export const autoExtractProductFromBarcode = (rawInput: string): { product: Prod
     return {
       product: autoProduct,
       isAutoCataloged: true,
-      message: `✨ ZERO-MANUAL AUTO INTAKE SUCCESS: Auto-cataloged "${masterEntry.name}" (Batch ${finalBatch}, Expiry: ${finalExpiry}) from GS1 Master Registry!`
+      message: `✨ ZERO-MANUAL AUTO INTAKE SUCCESS: Auto-cataloged "${masterEntry.name}" (Barcode #${targetGtin}, Batch ${finalBatch}, Expiry: ${finalExpiry}) from GS1 Master Registry!`
     };
   }
 
   // 2. Generic Auto-Generation for Unrecognized Barcodes
-  const today = new Date('2026-09-11');
-  today.setDate(today.getDate() + 14); // 14-day default shelf life
+  const today = new Date();
+  today.setDate(today.getDate() + 30); // 30-day default shelf life
   const genericExpiry = parsed.expiryDate || today.toISOString().split('T')[0];
-  const genericBatch = parsed.batchNumber || `BATCH-GS1-${Math.floor(100 + Math.random() * 900)}`;
+  const genericBatch = parsed.batchNumber || `BATCH-INWARD-${Math.floor(100 + Math.random() * 900)}`;
 
   const genericProduct: Product = {
     id: Date.now() + Math.floor(Math.random() * 1000),
-    tenantId: 1,
+    tenantId: tenantId,
     barcode: targetGtin,
-    sku: `SKU-AUTO-${targetGtin.slice(-4)}`,
-    name: `GS1 Auto SKU #${targetGtin.slice(-6)}`,
+    sku: `SKU-${targetGtin.slice(-6)}`,
+    name: `Inward Product SKU #${targetGtin}`,
     category: 'Beverages & Pantry',
     globalPrice: 150.00,
     price: 150.00,
@@ -261,6 +292,6 @@ export const autoExtractProductFromBarcode = (rawInput: string): { product: Prod
   return {
     product: genericProduct,
     isAutoCataloged: true,
-    message: `⚡ GS1 AUTO-GENERATED: Created SKU #${targetGtin} with Batch ${genericBatch} and Expiry ${genericExpiry} with 0 manual typing!`
+    message: `⚡ GS1 AUTO-GENERATED: Inward SKU #${targetGtin} with Batch ${genericBatch} and Expiry ${genericExpiry}!`
   };
 };

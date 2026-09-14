@@ -26,9 +26,27 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
   const [isContinuous, setIsContinuous] = useState<boolean>(continuousMode);
   const [scanFlashToast, setScanFlashToast] = useState<string | null>(null);
 
+  const [manualInput, setManualInput] = useState<string>('');
+
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const lastScanTimeRef = useRef<number>(0);
   const lastScanBarcodeRef = useRef<string>('');
+
+  const handleManualSubmit = (codeToSubmit: string) => {
+    const cleanCode = codeToSubmit.trim().replace(/^\][a-zA-Z0-9]{2}/, '').replace(/[\u001d\x1d]/g, '');
+    if (!cleanCode) return;
+    playBeepSound();
+    setLastScanned(cleanCode);
+    setScannedCount(prev => prev + 1);
+    setScanFlashToast(`Scanned: ${cleanCode}`);
+    setTimeout(() => setScanFlashToast(null), 1500);
+    onScanSuccess(cleanCode);
+    setManualInput('');
+    if (!isContinuous) {
+      stopScanner();
+      onClose();
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -36,6 +54,7 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
       setLastScanned('');
       setScannedCount(0);
       setScanFlashToast(null);
+      setManualInput('');
       
       Html5Qrcode.getCameras()
         .then(deviceList => {
@@ -92,26 +111,28 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
           aspectRatio: 1.333
         },
         (decodedText) => {
+          // Clean decoded text: strip symbology prefixes like ]C1, ]e0 and control characters
+          const cleanCode = decodedText.trim().replace(/^\][a-zA-Z0-9]{2}/, '').replace(/[\u001d\x1d]/g, '');
           const now = Date.now();
           // Debounce duplicate scans within 1.2 seconds
-          if (decodedText === lastScanBarcodeRef.current && (now - lastScanTimeRef.current) < 1200) {
+          if (cleanCode === lastScanBarcodeRef.current && (now - lastScanTimeRef.current) < 1200) {
             return;
           }
 
           lastScanTimeRef.current = now;
-          lastScanBarcodeRef.current = decodedText;
+          lastScanBarcodeRef.current = cleanCode;
 
           // Feedback beep
           playBeepSound();
-          setLastScanned(decodedText);
+          setLastScanned(cleanCode);
           setScannedCount(prev => prev + 1);
-          setScanFlashToast(`Scanned: ${decodedText}`);
+          setScanFlashToast(`Scanned: ${cleanCode}`);
 
           setTimeout(() => {
             setScanFlashToast(null);
           }, 1500);
 
-          onScanSuccess(decodedText);
+          onScanSuccess(cleanCode);
 
           // If NOT in continuous mode, stop and close
           if (!isContinuous) {
@@ -293,6 +314,34 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
               </span>
             </div>
           )}
+
+          {/* Manual / USB Scanner Input Fallback */}
+          <div className="w-full flex items-center gap-2 bg-stone-950 p-2.5 rounded-xl border border-stone-800">
+            <input
+              type="text"
+              value={manualInput}
+              onChange={e => setManualInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && manualInput.trim()) {
+                  e.preventDefault();
+                  handleManualSubmit(manualInput);
+                }
+              }}
+              placeholder="Or type/paste barcode manually (e.g. 8901234567890)..."
+              className="flex-1 bg-stone-900 border border-stone-700 text-amber-300 placeholder-stone-500 rounded-lg px-3 py-1.5 text-xs font-mono outline-none focus:border-amber-500"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (manualInput.trim()) {
+                  handleManualSubmit(manualInput);
+                }
+              }}
+              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold rounded-lg text-xs cursor-pointer flex items-center gap-1 shrink-0"
+            >
+              Simulate Scan
+            </button>
+          </div>
         </div>
 
         {/* Footer Actions */}

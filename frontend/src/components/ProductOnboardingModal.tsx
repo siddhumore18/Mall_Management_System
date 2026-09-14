@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Product } from '../types';
-import { autoExtractProductFromBarcode } from '../utils/gs1BarcodeParser';
+import { autoExtractProductFromBarcode, parseGs1BarcodeString } from '../utils/gs1BarcodeParser';
 import { CameraBarcodeScannerModal } from './CameraBarcodeScannerModal';
 import {
   PackagePlus, Search, CheckCircle2, AlertCircle, Camera, Sparkles,
@@ -69,7 +69,8 @@ export const ProductOnboardingModal: React.FC<ProductOnboardingModalProps> = ({
   if (!isOpen) return null;
 
   const handleBarcodeLookup = async (scannedBarcode: string) => {
-    const cleanCode = scannedBarcode.trim();
+    const parsed = parseGs1BarcodeString(scannedBarcode);
+    const cleanCode = parsed.gtin || scannedBarcode.trim().replace(/^\][a-zA-Z0-9]{2}/, '');
     if (!cleanCode) return;
 
     setBarcodeQuery(cleanCode);

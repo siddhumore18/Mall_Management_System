@@ -77,10 +77,20 @@ interface RetailStoreState {
   toggleOutletStatus: (id: number) => void;
 }
 
+const savedUser = (() => {
+  try {
+    const u = localStorage.getItem('megamart_user');
+    return u ? JSON.parse(u) : null;
+  } catch (e) {
+    return null;
+  }
+})();
+const initialTenantId = savedUser?.tenantId || 1;
+
 export const useRetailStore = create<RetailStoreState>((set, get) => ({
-  currentTenantId: 1,
-  products: loadSavedProducts(1),
-  outlets: loadSavedOutlets(1),
+  currentTenantId: initialTenantId,
+  products: loadSavedProducts(initialTenantId),
+  outlets: loadSavedOutlets(initialTenantId, savedUser?.companyName),
   isLoading: false,
 
   loadTenantData: async (tenantId, companyName) => {

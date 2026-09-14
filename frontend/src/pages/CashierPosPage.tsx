@@ -11,6 +11,7 @@ import { CustomerCrmPanel } from '../components/CustomerCrmPanel';
 import { CustomerDirectoryView } from '../components/CustomerDirectoryView';
 import { PaymentGatewayModal } from '../components/PaymentGatewayModal';
 import { CameraBarcodeScannerModal } from '../components/CameraBarcodeScannerModal';
+import { parseGs1BarcodeString } from '../utils/gs1BarcodeParser';
 import { 
   Barcode, Search, Plus, Minus, Trash2, CreditCard, DollarSign, Camera,
   User, CheckCircle2, AlertCircle, ShoppingBag, Percent, Image as ImageIcon, 
@@ -987,10 +988,12 @@ TOTAL AMOUNT PAID : ₹${data.total.toFixed(2)}
             isOpen={isCameraModalOpen}
             onClose={() => setIsCameraModalOpen(false)}
             onScanSuccess={(scannedText) => {
-              setBarcodeInput(scannedText);
-              setSearchQuery(scannedText);
+              const parsed = parseGs1BarcodeString(scannedText);
+              const cleanCode = parsed.gtin || scannedText.trim();
+              setBarcodeInput(cleanCode);
+              setSearchQuery(cleanCode);
               // Trigger barcode checkout addition automatically
-              const localMatch = products.find(p => p.barcode === scannedText || p.name.toLowerCase().includes(scannedText.toLowerCase()));
+              const localMatch = products.find(p => p.barcode === cleanCode || (p.barcode && cleanCode.includes(p.barcode)) || p.name.toLowerCase().includes(cleanCode.toLowerCase()));
               if (localMatch) {
                 processAddToCart(localMatch);
                 setBarcodeInput('');

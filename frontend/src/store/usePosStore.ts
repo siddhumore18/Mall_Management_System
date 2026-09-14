@@ -51,11 +51,21 @@ interface PosState {
   getTotalAmount: () => number;
 }
 
+const savedUser = (() => {
+  try {
+    const u = localStorage.getItem('megamart_user');
+    return u ? JSON.parse(u) : null;
+  } catch (e) {
+    return null;
+  }
+})();
+const initialTenantId = savedUser?.tenantId || 1;
+
 export const usePosStore = create<PosState>((set, get) => ({
-  currentTenantId: 1,
+  currentTenantId: initialTenantId,
   cart: [],
   activeCustomer: null,
-  customersList: loadSavedCustomers(1),
+  customersList: loadSavedCustomers(initialTenantId),
   discountType: 'PERCENT',
   discountValue: 0,
   taxRate: 0.18, // 18% GST (9% CGST + 9% SGST)
