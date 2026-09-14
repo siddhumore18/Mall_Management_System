@@ -33,6 +33,27 @@ public class Tenant {
     @Column(name = "billing_cycle")
     private String billingCycle = "MONTHLY";
 
+    @Column(name = "admin_name")
+    private String adminName;
+
+    @Column(name = "admin_email")
+    private String adminEmail;
+
+    @Column(name = "payment_method")
+    private String paymentMethod = "Razorpay UPI";
+
+    @Column(name = "payment_id")
+    private String paymentId;
+
+    @Column(name = "amount_paid", precision = 10, scale = 2)
+    private java.math.BigDecimal amountPaid;
+
+    @Column(name = "invoice_number")
+    private String invoiceNumber;
+
+    @Column(name = "gstin")
+    private String gstin = "27AAAAA0000A1Z5";
+
     public Tenant() {}
 
     public Tenant(String companyName, SubscriptionPlan plan, TenantStatus status) {
@@ -104,4 +125,25 @@ public class Tenant {
         }
         return subscriptionEndDate == null || !java.time.LocalDate.now().isAfter(subscriptionEndDate);
     }
+
+    public String getAdminName() { return adminName; }
+    public void setAdminName(String adminName) { this.adminName = adminName; }
+
+    public String getAdminEmail() { return adminEmail; }
+    public void setAdminEmail(String adminEmail) { this.adminEmail = adminEmail; }
+
+    public String getPaymentMethod() { return paymentMethod != null ? paymentMethod : "Razorpay UPI"; }
+    public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
+
+    public String getPaymentId() { return paymentId; }
+    public void setPaymentId(String paymentId) { this.paymentId = paymentId; }
+
+    public java.math.BigDecimal getAmountPaid() { return amountPaid; }
+    public void setAmountPaid(java.math.BigDecimal amountPaid) { this.amountPaid = amountPaid; }
+
+    public String getInvoiceNumber() { return invoiceNumber; }
+    public void setInvoiceNumber(String invoiceNumber) { this.invoiceNumber = invoiceNumber; }
+
+    public String getGstin() { return gstin != null ? gstin : "27AAAAA0000A1Z5"; }
+    public void setGstin(String gstin) { this.gstin = gstin; }
 }

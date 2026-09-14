@@ -593,6 +593,43 @@ export const superAdminApi = {
       if (res.ok) return await res.json();
     } catch (e) {}
     return null;
+  },
+
+  updateTenantPlan: async (id: number, data: { planId?: number; planName?: string; billingCycle?: string; status?: string }) => {
+    try {
+      const res = await fetch(`${API_BASE}/superadmin/tenants/${id}/plan`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(data)
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        try {
+          const localUsers = JSON.parse(localStorage.getItem('megamart_registered_users') || '[]');
+          const updatedUsers = localUsers.map((u: any) => {
+            if (u.tenantId === id || u.companyName === updated.name) {
+              return {
+                ...u,
+                tenantInfo: {
+                  ...u.tenantInfo,
+                  planName: updated.plan,
+                  planPrice: updated.monthlyFee,
+                  maxStores: updated.maxStores,
+                  maxUsers: updated.maxUsers,
+                  status: updated.status
+                }
+              };
+            }
+            return u;
+          });
+          localStorage.setItem('megamart_registered_users', JSON.stringify(updatedUsers));
+        } catch (e) {}
+        return updated;
+      }
+    } catch (e) {
+      console.warn('Backend updateTenantPlan failed:', e);
+    }
+    return null;
   }
 };
 

@@ -38,52 +38,83 @@ public class SuperAdminController {
     private PasswordEncoder passwordEncoder;
 
     /**
+     * Helper to format Tenant with rich subscriber info, payment refs, and GST SaaS invoice metadata.
+     */
+    private Map<String, Object> formatTenant(Tenant t) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", t.getId());
+        map.put("name", t.getCompanyName());
+        map.put("plan", t.getPlan() != null ? t.getPlan().getName() : "Standard Chain");
+        map.put("planId", t.getPlan() != null ? t.getPlan().getId() : 2L);
+        map.put("status", t.getStatus() != null ? t.getStatus().name() : "ACTIVE");
+        map.put("subscriptionStatus", t.getSubscriptionStatus());
+        
+        long storesCount = storeRepository.countByTenantId(t.getId());
+        long usersCount = userRepository.countByTenantId(t.getId());
+        
+        map.put("storesCount", Math.max(1, storesCount));
+        map.put("usersCount", Math.max(1, usersCount));
+        map.put("monthlyFee", t.getPlan() != null ? t.getPlan().getPrice().doubleValue() : 14999.0);
+        
+        LocalDate start = t.getSubscriptionStartDate() != null ? t.getSubscriptionStartDate() : LocalDate.now().minusDays(1);
+        LocalDate end = t.getSubscriptionEndDate() != null ? t.getSubscriptionEndDate() : LocalDate.now().plusMonths(1);
+        map.put("startDate", start.toString());
+        map.put("renewalDate", end.toString());
+        map.put("billingCycle", t.getBillingCycle() != null ? t.getBillingCycle() : "MONTHLY");
+
+        // Subscriber Details
+        String adminName = t.getAdminName();
+        String adminEmail = t.getAdminEmail();
+        if (adminName == null || adminEmail == null) {
+            var adminUser = userRepository.findByTenantId(t.getId()).stream()
+                    .filter(u -> u.getRole() == Role.TENANT_ADMIN)
+                    .findFirst().orElse(null);
+            if (adminUser != null) {
+                if (adminName == null) adminName = adminUser.getName();
+                if (adminEmail == null) adminEmail = adminUser.getEmail();
+            }
+        }
+        map.put("adminName", adminName != null ? adminName : t.getCompanyName() + " Admin");
+        map.put("adminEmail", adminEmail != null ? adminEmail : "admin@" + t.getCompanyName().toLowerCase().replaceAll("[^a-z0-9]", "") + ".com");
+
+        // Tax & B2B SaaS Invoice details
+        map.put("invoiceNumber", t.getInvoiceNumber() != null ? t.getInvoiceNumber() : "MM-SAAS-" + String.format("%05d", (1000 + t.getId())));
+        map.put("paymentMethod", t.getPaymentMethod() != null ? t.getPaymentMethod() : "Razorpay UPI");
+        map.put("paymentId", t.getPaymentId() != null ? t.getPaymentId() : "pay_rzp_" + t.getId() + "98124");
+        
+        double amount = t.getAmountPaid() != null ? t.getAmountPaid().doubleValue() : (t.getPlan() != null ? t.getPlan().getPrice().doubleValue() : 14999.0);
+        map.put("amountPaid", amount);
+        map.put("gstin", t.getGstin() != null ? t.getGstin() : "27AAAAA0000A1Z5");
+        
+        // City detection
+        String city = "Mumbai";
+        var stores = storeRepository.findByTenantId(t.getId());
+        if (!stores.isEmpty() && stores.get(0).getLocation() != null) {
+            String loc = stores.get(0).getLocation();
+            if (loc.contains(",")) {
+                String[] parts = loc.split(",");
+                city = parts[parts.length - 1].trim();
+            } else {
+                city = loc;
+            }
+        }
+        map.put("city", city);
+        map.put("maxStores", t.getPlan() != null ? t.getPlan().getMaxStores() : 10);
+        map.put("maxUsers", t.getPlan() != null ? t.getPlan().getMaxUsers() : 50);
+
+        return map;
+    }
+
+    /**
      * Get all registered tenants with real store counts, user counts, and plan details.
      */
     @GetMapping("/tenants")
     public ResponseEntity<List<Map<String, Object>>> getAllTenants() {
         List<Tenant> tenants = tenantRepository.findAll();
         List<Map<String, Object>> result = new ArrayList<>();
-
         for (Tenant t : tenants) {
-            Map<String, Object> map = new HashMap<>();
-            map.put("id", t.getId());
-            map.put("name", t.getCompanyName());
-            map.put("plan", t.getPlan() != null ? t.getPlan().getName() : "Standard Chain");
-            map.put("planId", t.getPlan() != null ? t.getPlan().getId() : 2L);
-            map.put("status", t.getStatus() != null ? t.getStatus().name() : "ACTIVE");
-            map.put("subscriptionStatus", t.getSubscriptionStatus());
-            
-            long storesCount = storeRepository.countByTenantId(t.getId());
-            long usersCount = userRepository.countByTenantId(t.getId());
-            
-            map.put("storesCount", Math.max(1, storesCount));
-            map.put("usersCount", Math.max(1, usersCount));
-            map.put("monthlyFee", t.getPlan() != null ? t.getPlan().getPrice().doubleValue() : 14999.0);
-            
-            LocalDate end = t.getSubscriptionEndDate();
-            map.put("renewalDate", end != null ? end.toString() : LocalDate.now().plusMonths(1).toString());
-            
-            // City detection from store location or default
-            String city = "Mumbai";
-            var stores = storeRepository.findByTenantId(t.getId());
-            if (!stores.isEmpty() && stores.get(0).getLocation() != null) {
-                String loc = stores.get(0).getLocation();
-                if (loc.contains(",")) {
-                    String[] parts = loc.split(",");
-                    city = parts[parts.length - 1].trim();
-                } else {
-                    city = loc;
-                }
-            }
-            map.put("city", city);
-            map.put("maxStores", t.getPlan() != null ? t.getPlan().getMaxStores() : 10);
-            map.put("maxUsers", t.getPlan() != null ? t.getPlan().getMaxUsers() : 50);
-            map.put("billingCycle", t.getBillingCycle() != null ? t.getBillingCycle() : "MONTHLY");
-
-            result.add(map);
+            result.add(formatTenant(t));
         }
-
         return ResponseEntity.ok(result);
     }
 
@@ -94,6 +125,9 @@ public class SuperAdminController {
     public ResponseEntity<Map<String, Object>> createTenant(@RequestBody Map<String, Object> body) {
         String companyName = body.getOrDefault("name", "New Retail Chain").toString().trim();
         String city = body.getOrDefault("city", "Mumbai").toString().trim();
+        String adminName = body.getOrDefault("adminName", companyName + " Owner").toString().trim();
+        String adminEmailInput = body.getOrDefault("adminEmail", "").toString().trim();
+        
         Object planIdObj = body.get("planId");
         Long planId = planIdObj != null ? Long.parseLong(planIdObj.toString()) : null;
 
@@ -114,6 +148,14 @@ public class SuperAdminController {
         }
 
         Tenant tenant = new Tenant(companyName, plan, TenantStatus.ACTIVE);
+        tenant.setAdminName(adminName);
+        String finalEmail = !adminEmailInput.isBlank() ? adminEmailInput : "admin@" + companyName.toLowerCase().replaceAll("[^a-z0-9]", "") + ".com";
+        tenant.setAdminEmail(finalEmail);
+        tenant.setPaymentMethod(body.getOrDefault("paymentMethod", "Razorpay UPI").toString());
+        tenant.setPaymentId("pay_manual_" + System.currentTimeMillis());
+        tenant.setAmountPaid(plan.getPrice());
+        tenant.setInvoiceNumber("MM-SAAS-" + String.format("%05d", System.currentTimeMillis() % 100000));
+        tenant.setGstin("27AAAAA0000A1Z5");
         tenant.setSubscriptionStartDate(LocalDate.now());
         tenant.setSubscriptionEndDate(LocalDate.now().plusYears(1));
         tenant.setBillingCycle("ANNUAL");
@@ -124,25 +166,55 @@ public class SuperAdminController {
         Store initialStore = storeRepository.save(new Store(savedTenant.getId(), companyName + " Flagship", city, storeCode));
 
         // Auto-provision initial Tenant Admin user
-        String adminEmail = "admin@" + companyName.toLowerCase().replaceAll("[^a-z0-9]", "") + ".com";
         String adminPass = passwordEncoder.encode("password123");
-        userRepository.save(new User(savedTenant.getId(), initialStore.getId(), "Administrator", adminEmail, adminPass, "1234", Role.TENANT_ADMIN));
+        userRepository.save(new User(savedTenant.getId(), initialStore.getId(), adminName, finalEmail, adminPass, "1234", Role.TENANT_ADMIN));
 
-        Map<String, Object> resp = new HashMap<>();
-        resp.put("id", savedTenant.getId());
-        resp.put("name", savedTenant.getCompanyName());
-        resp.put("plan", plan.getName());
-        resp.put("status", "ACTIVE");
-        resp.put("storesCount", 1);
-        resp.put("usersCount", 1);
-        resp.put("monthlyFee", plan.getPrice().doubleValue());
-        resp.put("renewalDate", tenant.getSubscriptionEndDate().toString());
-        resp.put("city", city);
-        resp.put("maxStores", plan.getMaxStores());
-        resp.put("maxUsers", plan.getMaxUsers());
-        resp.put("billingCycle", "ANNUAL");
+        return ResponseEntity.ok(formatTenant(savedTenant));
+    }
 
-        return ResponseEntity.ok(resp);
+    /**
+     * Change a tenant's subscription plan directly from Super Admin console.
+     * Persists plan change to DB so the whole system immediately adopts the new quota and tier!
+     */
+    @PutMapping("/tenants/{id}/plan")
+    public ResponseEntity<Map<String, Object>> updateTenantPlan(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        
+        Tenant tenant = tenantRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Tenant not found with ID: " + id));
+
+        Object planIdObj = body.get("planId");
+        Long planId = planIdObj != null ? Long.parseLong(planIdObj.toString()) : null;
+        String planName = body.get("planName") != null ? body.get("planName").toString() : null;
+
+        SubscriptionPlan plan = null;
+        if (planId != null) {
+            plan = planRepository.findById(planId).orElse(null);
+        }
+        if (plan == null && planName != null) {
+            plan = planRepository.findAll().stream()
+                    .filter(p -> p.getName().equalsIgnoreCase(planName.trim()) || p.getName().toLowerCase().contains(planName.toLowerCase()))
+                    .findFirst().orElse(null);
+        }
+        if (plan == null) {
+            throw new RuntimeException("Subscription plan not found: " + (planId != null ? planId : planName));
+        }
+
+        tenant.setPlan(plan);
+        if (body.containsKey("billingCycle")) {
+            tenant.setBillingCycle(body.get("billingCycle").toString());
+        }
+        if (body.containsKey("status")) {
+            tenant.setStatus(TenantStatus.valueOf(body.get("status").toString().toUpperCase()));
+        }
+
+        // Generate updated SaaS invoice for the plan upgrade/change
+        tenant.setInvoiceNumber("MM-SAAS-" + String.format("%05d", System.currentTimeMillis() % 100000));
+        tenant.setAmountPaid(plan.getPrice());
+
+        Tenant saved = tenantRepository.save(tenant);
+        return ResponseEntity.ok(formatTenant(saved));
     }
 
     /**

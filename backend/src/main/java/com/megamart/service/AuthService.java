@@ -65,6 +65,18 @@ public class AuthService {
 
         // 1. Create Tenant with Subscription Timeline
         Tenant tenant = new Tenant(request.getCompanyName(), plan, TenantStatus.ACTIVE, billingCycle, durationMonths);
+        tenant.setAdminName(request.getAdminName());
+        tenant.setAdminEmail(request.getEmail());
+        tenant.setPaymentMethod(request.getPaymentMethod() != null ? request.getPaymentMethod() : "Razorpay UPI");
+        tenant.setPaymentId(request.getPaymentId() != null ? request.getPaymentId() : "pay_" + System.currentTimeMillis());
+        
+        java.math.BigDecimal price = "ANNUAL".equalsIgnoreCase(billingCycle) 
+                ? plan.getPrice().multiply(new java.math.BigDecimal("0.8")).multiply(new java.math.BigDecimal("12")) 
+                : plan.getPrice();
+        tenant.setAmountPaid(request.getAmountPaid() != null ? request.getAmountPaid() : price);
+        tenant.setInvoiceNumber("MM-SAAS-" + String.format("%05d", System.currentTimeMillis() % 100000));
+        tenant.setGstin("27AAAAA0000A1Z5");
+        
         Tenant savedTenant = tenantRepository.save(tenant);
 
         // 2. Create Initial Flagship Store

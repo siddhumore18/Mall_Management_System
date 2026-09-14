@@ -71,7 +71,7 @@ export const LandingPage: React.FC<Props> = ({ onNavigateLogin }) => {
     setShowPaymentGateway(true);
   };
 
-  const handlePaymentSuccess = async () => {
+  const handlePaymentSuccess = async (paymentData?: { method: string; paymentId: string; orderId: string; amount: number }) => {
     if (!selectedPlan) return;
     setShowPaymentGateway(false);
     setLoading(true);
@@ -80,6 +80,10 @@ export const LandingPage: React.FC<Props> = ({ onNavigateLogin }) => {
     const targetAdmin = adminName.trim();
     const targetEmail = email.trim();
     const targetPassword = password.trim();
+    const payMethod = paymentData?.method || 'Razorpay UPI';
+    const payId = paymentData?.paymentId || `pay_rzp_${Date.now()}`;
+    const amountPaid = paymentData?.amount || (isAnnual ? selectedPlan.priceAnnual : selectedPlan.priceMonthly);
+    const invoiceNum = `MM-SAAS-${Date.now().toString().slice(-5)}`;
 
     try {
       const res = await authApi.registerTenant({
@@ -87,7 +91,11 @@ export const LandingPage: React.FC<Props> = ({ onNavigateLogin }) => {
         adminName: targetAdmin,
         email: targetEmail,
         password: targetPassword,
-        planId: selectedPlan.id
+        planId: selectedPlan.id,
+        billingCycle: isAnnual ? 'ANNUAL' : 'MONTHLY',
+        paymentMethod: payMethod,
+        paymentId: payId,
+        amountPaid: amountPaid
       });
       
       const tenantInfo = {
@@ -100,7 +108,15 @@ export const LandingPage: React.FC<Props> = ({ onNavigateLogin }) => {
         maxStores: selectedPlan.maxStores,
         maxUsers: selectedPlan.maxUsers,
         activeStoresCount: 1,
-        activeUsersCount: 1
+        activeUsersCount: 1,
+        adminName: targetAdmin,
+        adminEmail: targetEmail,
+        paymentMethod: payMethod,
+        paymentId: payId,
+        amountPaid: amountPaid,
+        invoiceNumber: invoiceNum,
+        billingCycle: isAnnual ? 'ANNUAL' : 'MONTHLY',
+        renewalDate: isAnnual ? '2027-09-14' : '2026-10-14'
       };
 
       try {
@@ -142,7 +158,15 @@ export const LandingPage: React.FC<Props> = ({ onNavigateLogin }) => {
         maxStores: selectedPlan.maxStores,
         maxUsers: selectedPlan.maxUsers,
         activeStoresCount: 1,
-        activeUsersCount: 1
+        activeUsersCount: 1,
+        adminName: targetAdmin,
+        adminEmail: targetEmail,
+        paymentMethod: payMethod,
+        paymentId: payId,
+        amountPaid: amountPaid,
+        invoiceNumber: invoiceNum,
+        billingCycle: isAnnual ? 'ANNUAL' : 'MONTHLY',
+        renewalDate: isAnnual ? '2027-09-14' : '2026-10-14'
       };
 
       try {

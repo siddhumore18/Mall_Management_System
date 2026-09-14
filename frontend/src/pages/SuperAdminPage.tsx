@@ -3,11 +3,12 @@ import { useNavStore } from '../store/useNavStore';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { AreaLineChartWidget, DonutChartWidget } from '../components/AnalyticsCharts';
 import { superAdminApi } from '../services/api';
+import { SaaSTaxInvoiceModal, SaaSTenantInvoiceData } from '../components/SaaSTaxInvoiceModal';
 import {
   ShieldCheck, Building2, Activity, ArrowUpRight, Lock, Power,
   Check, CreditCard, Server, Globe, Cpu, HardDrive, Database,
   Users, TrendingUp, AlertTriangle, CheckCircle2, XCircle, Clock,
-  BarChart3, Zap, Shield, RefreshCw, Sliders, ToggleLeft, ToggleRight, Plus, X, Edit, Trash2, CheckSquare, Sparkles
+  BarChart3, Zap, Shield, RefreshCw, Sliders, ToggleLeft, ToggleRight, Plus, X, Edit, Trash2, CheckSquare, Sparkles, FileText
 } from 'lucide-react';
 
 interface Tenant {
@@ -20,6 +21,14 @@ interface Tenant {
   renewalDate: string;
   usersCount: number;
   city: string;
+  adminName?: string;
+  adminEmail?: string;
+  paymentMethod?: string;
+  paymentId?: string;
+  amountPaid?: number;
+  invoiceNumber?: string;
+  gstin?: string;
+  startDate?: string;
   customMaxStores?: number;
   customMaxUsers?: number;
   maxStores?: number;
@@ -43,6 +52,16 @@ export const SuperAdminPage: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [dbMetrics, setDbMetrics] = useState<any>(null);
+
+  // SaaS Tax Invoice Modal State
+  const [selectedInvoiceTenant, setSelectedInvoiceTenant] = useState<SaaSTenantInvoiceData | null>(null);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+
+  // Change Plan Modal State
+  const [changePlanTenant, setChangePlanTenant] = useState<Tenant | null>(null);
+  const [isChangePlanModalOpen, setIsChangePlanModalOpen] = useState(false);
+  const [selectedNewPlanId, setSelectedNewPlanId] = useState<number>(2);
+  const [selectedNewBillingCycle, setSelectedNewBillingCycle] = useState<string>('MONTHLY');
 
   const [tenants, setTenants] = useState<Tenant[]>([
     { id: 1, name: 'MegaMart Retail India Ltd', plan: 'Enterprise Hyper-Scale', status: 'ACTIVE', storesCount: 2, monthlyFee: 39999, renewalDate: '2026-10-01', usersCount: 14, city: 'Mumbai' },
@@ -247,6 +266,46 @@ export const SuperAdminPage: React.FC = () => {
       fetchRealData();
     } catch (err: any) {
       setMsg('Failed to onboard tenant: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Change Subscription Plan for Existing Client / Tenant
+  const handleChangeTenantPlanSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!changePlanTenant) return;
+    setLoading(true);
+    try {
+      const planObj = plans.find(p => p.id === (selectedNewPlanId === 1 ? 'starter' : selectedNewPlanId === 3 ? 'enterprise' : 'standard'));
+      const newPlanName = planObj ? planObj.name : 'Standard Chain';
+
+      const updated = await superAdminApi.updateTenantPlan(changePlanTenant.id, {
+        planId: selectedNewPlanId,
+        planName: newPlanName,
+        billingCycle: selectedNewBillingCycle
+      });
+
+      if (updated) {
+        setTenants(prev => prev.map(t => t.id === changePlanTenant.id ? { ...t, ...updated } : t));
+        setMsg(`Subscription Plan for "${changePlanTenant.name}" changed to "${updated.plan}" (${selectedNewBillingCycle})! Quota & billing updated.`);
+      } else {
+        setTenants(prev => prev.map(t => t.id === changePlanTenant.id ? {
+          ...t,
+          plan: newPlanName,
+          monthlyFee: planObj ? planObj.monthlyFee : t.monthlyFee,
+          maxStores: selectedNewPlanId === 3 ? 50 : selectedNewPlanId === 2 ? 10 : 2,
+          maxUsers: selectedNewPlanId === 3 ? 500 : selectedNewPlanId === 2 ? 50 : 10,
+          billingCycle: selectedNewBillingCycle
+        } : t));
+        setMsg(`Plan updated for "${changePlanTenant.name}" to "${newPlanName}"!`);
+      }
+
+      setIsChangePlanModalOpen(false);
+      setTimeout(() => setMsg(''), 5000);
+      fetchRealData();
+    } catch (err: any) {
+      setMsg('Failed to update plan: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -574,17 +633,18 @@ export const SuperAdminPage: React.FC = () => {
           </div>
         )}
 
-        <div className="gold-card overflow-hidden">
+        <div className="gold-card overflow-hidden shadow-lg border border-amber-200">
+        <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
-          <thead className="bg-amber-50/80 text-amber-950 uppercase font-extrabold text-[10px] border-b border-amber-200">
+          <thead className="bg-amber-50/90 text-amber-950 uppercase font-extrabold text-[10px] border-b border-amber-200">
             <tr>
-              <th className="p-3">Company Name</th>
-              <th className="p-3">Plan</th>
-              <th className="p-3">Outlets</th>
-              <th className="p-3">Users</th>
-              <th className="p-3">Monthly Fee</th>
+              <th className="p-3">Client & Subscriber</th>
+              <th className="p-3">Plan & Cycle</th>
+              <th className="p-3">Outlets Quota</th>
+              <th className="p-3">User Seats</th>
+              <th className="p-3">Billing & Payment</th>
               <th className="p-3">Status</th>
-              <th className="p-3 text-right">Actions</th>
+              <th className="p-3 text-right">Enterprise Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-stone-100 font-medium text-stone-800">
@@ -595,58 +655,126 @@ export const SuperAdminPage: React.FC = () => {
               const isOverQuota = isOverStores || isOverUsers;
 
               return (
-                <tr key={t.id} className={`hover:bg-amber-50/40 ${isOverQuota ? 'bg-rose-50/30' : ''}`}>
-                  <td className="p-3 font-bold text-amber-950">
-                    <div>{t.name} <span className="text-[10px] text-stone-500 font-normal">({t.city})</span></div>
+                <tr key={t.id} className={`hover:bg-amber-50/40 transition-colors ${isOverQuota ? 'bg-rose-50/30' : ''}`}>
+                  <td className="p-3">
+                    <div className="font-extrabold text-amber-950 text-sm flex items-center gap-1.5">
+                      <span>{t.name}</span>
+                      <span className="text-[10px] text-stone-500 font-medium px-1.5 py-0.2 bg-stone-100 rounded border border-stone-200">{t.city}</span>
+                    </div>
+                    <div className="text-[11px] text-stone-600 flex items-center gap-1.5 mt-1 font-medium">
+                      <Users className="w-3 h-3 text-amber-700 shrink-0" />
+                      <span className="font-bold text-stone-800">{t.adminName || 'Primary Administrator'}</span>
+                      <span className="text-stone-400">•</span>
+                      <span className="text-stone-500 font-mono text-[10px]">{t.adminEmail || `admin@${t.name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`}</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      {t.invoiceNumber && (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-mono font-bold text-amber-900 bg-amber-100/80 border border-amber-300/80 px-1.5 py-0.2 rounded">
+                          <FileText className="w-2.5 h-2.5" />
+                          <span>{t.invoiceNumber}</span>
+                        </span>
+                      )}
+                      {t.gstin && (
+                        <span className="text-[9px] font-mono text-stone-500">GST: {t.gstin}</span>
+                      )}
+                    </div>
                     {isOverQuota && (
-                      <span className="inline-flex items-center gap-1 text-[9px] font-extrabold text-rose-700 bg-rose-100 border border-rose-300 px-2 py-0.5 rounded-full mt-1">
+                      <span className="inline-flex items-center gap-1 text-[9px] font-extrabold text-rose-700 bg-rose-100 border border-rose-300 px-2 py-0.5 rounded-full mt-1.5">
                         <AlertTriangle className="w-2.5 h-2.5" /> Plan Limit Exceeded
                       </span>
                     )}
                   </td>
-                  <td className="p-3"><span className="gold-badge">{t.plan}</span></td>
+                  <td className="p-3">
+                    <span className="gold-badge font-bold">{t.plan}</span>
+                    <div className="text-[10px] font-extrabold text-stone-500 mt-1 uppercase tracking-wider">
+                      {t.billingCycle || 'MONTHLY'} CYCLE
+                    </div>
+                  </td>
                   <td className="p-3 font-mono">
                     <span className={isOverStores ? 'text-rose-700 font-black' : 'text-stone-700 font-bold'}>
-                      {t.storesCount} / {quota.maxStores === 9999 ? '∞' : quota.maxStores} Stores
+                      {t.storesCount} / {quota.maxStores === 9999 ? '∞' : quota.maxStores}
                     </span>
+                    <div className="text-[10px] text-stone-400 font-sans">Stores Active</div>
                   </td>
                   <td className="p-3 font-mono">
                     <span className={isOverUsers ? 'text-rose-700 font-black' : 'text-stone-700 font-bold'}>
-                      {t.usersCount} / {quota.maxUsers === 9999 ? '∞' : quota.maxUsers} Seats
+                      {t.usersCount} / {quota.maxUsers === 9999 ? '∞' : quota.maxUsers}
                     </span>
+                    <div className="text-[10px] text-stone-400 font-sans">Staff Seats</div>
                   </td>
-                  <td className="p-3 font-mono font-bold">₹{t.monthlyFee.toLocaleString()}/mo</td>
+                  <td className="p-3">
+                    <div className="font-mono font-extrabold text-amber-950 text-xs">₹{(t.amountPaid || t.monthlyFee).toLocaleString()}</div>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <span className="text-[9px] font-mono font-bold text-stone-600 bg-stone-100 px-1.5 py-0.2 rounded border border-stone-200 uppercase">
+                        {t.paymentMethod || 'RAZORPAY'}
+                      </span>
+                    </div>
+                    {t.paymentId && (
+                      <div className="text-[9px] font-mono text-stone-400 truncate max-w-[120px] mt-0.5" title={t.paymentId}>
+                        {t.paymentId}
+                      </div>
+                    )}
+                  </td>
                   <td className="p-3">
                     <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold ${t.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
                       {t.status}
                     </span>
                   </td>
-                  <td className="p-3 text-right space-x-2">
-                    <button
-                      onClick={() => {
-                        setSelectedTenant(t);
-                        setMaxStores(quota.maxStores === 9999 ? '9999' : quota.maxStores.toString());
-                        setMaxUsers(quota.maxUsers === 9999 ? '9999' : quota.maxUsers.toString());
-                        setIsQuotaModalOpen(true);
-                      }}
-                      className="gold-btn-secondary text-[10px] px-2.5 py-1 rounded cursor-pointer"
-                    >
-                      Boundary Quota
-                    </button>
-                    <button
-                      onClick={() => handleToggleStatus(t.id)}
-                      className={`px-3 py-1 rounded text-[10px] font-extrabold cursor-pointer ${
-                        t.status === 'ACTIVE' ? 'bg-stone-200 hover:bg-stone-300 text-stone-800' : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                      }`}
-                    >
-                      {t.status === 'ACTIVE' ? 'Suspend' : 'Activate'}
-                    </button>
+                  <td className="p-3 text-right">
+                    <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                      <button
+                        onClick={() => {
+                          setSelectedInvoiceTenant(t as any);
+                          setIsInvoiceModalOpen(true);
+                        }}
+                        className="gold-button-primary text-[10px] px-2.5 py-1 rounded-lg cursor-pointer flex items-center gap-1 shadow-sm"
+                        title="Generate Official GST Tax Invoice"
+                      >
+                        <FileText className="w-3 h-3" />
+                        <span>Tax Invoice</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setChangePlanTenant(t);
+                          const pid = t.plan.toLowerCase().includes('enterprise') ? 3 : t.plan.toLowerCase().includes('starter') ? 1 : 2;
+                          setSelectedNewPlanId(pid);
+                          setSelectedNewBillingCycle(t.billingCycle || 'MONTHLY');
+                          setIsChangePlanModalOpen(true);
+                        }}
+                        className="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 font-bold text-[10px] px-2.5 py-1 rounded-lg cursor-pointer flex items-center gap-1 shadow-xs transition-colors"
+                        title="Change Subscription Tier & Limits"
+                      >
+                        <RefreshCw className="w-3 h-3 text-amber-700" />
+                        <span>Change Plan</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedTenant(t);
+                          setMaxStores(quota.maxStores === 9999 ? '9999' : quota.maxStores.toString());
+                          setMaxUsers(quota.maxUsers === 9999 ? '9999' : quota.maxUsers.toString());
+                          setIsQuotaModalOpen(true);
+                        }}
+                        className="gold-btn-secondary text-[10px] px-2 py-1 rounded-lg cursor-pointer"
+                        title="Edit Custom Resource Quota"
+                      >
+                        Quota
+                      </button>
+                      <button
+                        onClick={() => handleToggleStatus(t.id)}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold cursor-pointer transition-colors ${
+                          t.status === 'ACTIVE' ? 'bg-stone-200 hover:bg-stone-300 text-stone-800' : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                        }`}
+                      >
+                        {t.status === 'ACTIVE' ? 'Suspend' : 'Activate'}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
@@ -1005,6 +1133,135 @@ export const SuperAdminPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ─── CHANGE SUBSCRIPTION PLAN MODAL ─── */}
+      {isChangePlanModalOpen && changePlanTenant && (
+        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-slide-up">
+          <div className="bg-white max-w-lg w-full rounded-2xl border-2 border-amber-300 shadow-2xl p-6 space-y-4">
+            <div className="flex justify-between items-center border-b border-amber-200 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center text-amber-800 shadow-inner">
+                  <RefreshCw className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-amber-950 text-sm">Change Subscription Tier</h3>
+                  <p className="text-[11px] text-stone-500 font-medium">Tenant: <span className="font-bold text-amber-900">{changePlanTenant.name}</span></p>
+                </div>
+              </div>
+              <button onClick={() => setIsChangePlanModalOpen(false)} className="text-stone-400 hover:text-stone-700 font-bold cursor-pointer">✕</button>
+            </div>
+
+            <form onSubmit={handleChangeTenantPlanSubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-[10px] uppercase font-extrabold text-stone-600 mb-2">Select Target SaaS Tier</label>
+                <div className="space-y-2">
+                  {[
+                    { id: 1, name: 'Starter Plan', fee: 4999, stores: '1 Outlet', users: '5 Staff Seats', badge: 'Single Outlet' },
+                    { id: 2, name: 'Standard Plan', fee: 14999, stores: '5 Outlets', users: '25 Staff Seats', badge: 'Popular Growth' },
+                    { id: 3, name: 'Enterprise Plan', fee: 39999, stores: 'Unlimited Outlets', users: 'Unlimited Seats', badge: 'Hyper-Scale' }
+                  ].map(p => (
+                    <label 
+                      key={p.id}
+                      onClick={() => setSelectedNewPlanId(p.id)}
+                      className={`flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                        selectedNewPlanId === p.id 
+                          ? 'border-amber-600 bg-amber-50/70 shadow-sm' 
+                          : 'border-stone-200 hover:border-amber-200 bg-stone-50/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input 
+                          type="radio" 
+                          name="targetPlan" 
+                          checked={selectedNewPlanId === p.id}
+                          onChange={() => setSelectedNewPlanId(p.id)}
+                          className="accent-amber-600 w-4 h-4"
+                        />
+                        <div>
+                          <div className="font-bold text-stone-900 flex items-center gap-2">
+                            <span>{p.name}</span>
+                            <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-200 text-amber-900">{p.badge}</span>
+                          </div>
+                          <div className="text-[10px] text-stone-500 mt-0.5">
+                            {p.stores} • {p.users}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-mono font-extrabold text-sm text-amber-950">₹{p.fee.toLocaleString()}</span>
+                        <span className="text-[10px] text-stone-500">/mo</span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase font-extrabold text-stone-600 mb-1">Billing Frequency</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedNewBillingCycle('MONTHLY')}
+                    className={`py-2 px-3 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                      selectedNewBillingCycle === 'MONTHLY'
+                        ? 'border-amber-600 bg-amber-500 text-white shadow-sm'
+                        : 'border-stone-200 bg-stone-50 text-stone-700 hover:bg-stone-100'
+                    }`}
+                  >
+                    Monthly Billing
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedNewBillingCycle('ANNUAL')}
+                    className={`py-2 px-3 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                      selectedNewBillingCycle === 'ANNUAL'
+                        ? 'border-amber-600 bg-amber-500 text-white shadow-sm'
+                        : 'border-stone-200 bg-stone-50 text-stone-700 hover:bg-stone-100'
+                    }`}
+                  >
+                    Annual (Save 20%)
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[11px] text-amber-900 space-y-1">
+                <div className="font-bold flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+                  <span>Instant System-Wide Synchronization:</span>
+                </div>
+                <p className="text-stone-600 text-[10px] leading-relaxed">
+                  Changing this plan updates the database, reconfigures outlet limits and user seats quotas, recalculates GST invoices, and synchronizes tenant privileges in real-time.
+                </p>
+              </div>
+
+              <div className="flex gap-2 pt-2 border-t border-stone-200">
+                <button
+                  type="button"
+                  onClick={() => setIsChangePlanModalOpen(false)}
+                  className="w-1/2 bg-stone-100 hover:bg-stone-200 text-stone-700 py-2.5 rounded-xl font-bold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-1/2 gold-button-primary py-2.5 rounded-xl font-bold cursor-pointer flex items-center justify-center gap-1.5 shadow-md disabled:opacity-50"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{loading ? 'Updating...' : 'Confirm & Apply'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── SAAS GST TAX INVOICE MODAL ─── */}
+      <SaaSTaxInvoiceModal
+        isOpen={isInvoiceModalOpen}
+        onClose={() => setIsInvoiceModalOpen(false)}
+        tenant={selectedInvoiceTenant}
+      />
     </div>
   );
 };
