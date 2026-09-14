@@ -102,4 +102,5 @@ public class TenantDto {
 
     public boolean isSubscriptionActive() { return isSubscriptionActive; }
     public void setSubscriptionActive(boolean subscriptionActive) { isSubscriptionActive = subscriptionActive; }
+
 }

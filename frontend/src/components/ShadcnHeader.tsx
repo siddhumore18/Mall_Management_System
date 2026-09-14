@@ -32,8 +32,16 @@ export const ShadcnHeader: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Filter notifications for active user's role
-  const myNotifs = notifications.filter(n => n.targetRole === activeRole || n.targetRole === 'ALL' || (activeRole === 'SUPER_ADMIN' && n.type === 'UPGRADE_REQUEST'));
+  // Filter notifications for active user's role and tenant boundary
+  const myNotifs = notifications.filter(n => {
+    const roleMatches = n.targetRole === activeRole || n.targetRole === 'ALL' || (activeRole === 'SUPER_ADMIN' && n.type === 'UPGRADE_REQUEST');
+    if (!roleMatches) return false;
+    if (activeRole !== 'SUPER_ADMIN' && user?.tenantId && user.tenantId !== 1) {
+      if (n.metadata?.tenantId && n.metadata.tenantId !== user.tenantId) return false;
+      if (n.senderTenant && n.senderTenant.includes('MegaMart Retail India Ltd')) return false;
+    }
+    return true;
+  });
   const unreadCount = myNotifs.filter(n => n.status === 'PENDING').length;
 
   return (

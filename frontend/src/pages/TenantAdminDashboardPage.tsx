@@ -75,6 +75,16 @@ interface PromoCampaign {
   status: string;
 }
 
+interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  user: string;
+  role: string;
+  action: string;
+  details: string;
+  ip: string;
+}
+
 export const TenantAdminDashboardPage: React.FC = () => {
   const { activeNavItem } = useNavStore();
   const { addNotification } = useNotificationStore();
@@ -257,13 +267,38 @@ export const TenantAdminDashboardPage: React.FC = () => {
     }
   }, [promos, user?.tenantId]);
 
-  // Audit Logs state
-  const [auditLogs, setAuditLogs] = useState([
-    { id: 'AUD-8801', timestamp: '2026-09-10 08:45 AM', user: 'Vikram Malhotra', role: 'STORE_MANAGER', action: 'MANAGER_OVERRIDE', details: 'Approved ₹850 refund on Receipt #INV-891024', ip: '192.168.1.45' },
-    { id: 'AUD-8800', timestamp: '2026-09-10 08:15 AM', user: 'Ananya Deshmukh', role: 'ACCOUNTANT', action: 'PAYOUT_RELEASE', details: 'Released ₹1,45,000 to Amul Dairy India Ltd', ip: '192.168.1.12' },
-    { id: 'AUD-8799', timestamp: '2026-09-10 07:30 AM', user: 'Priya Patel', role: 'CASHIER', action: 'USER_LOGIN', details: 'Shift Login on POS Register #1', ip: '192.168.1.101' },
-    { id: 'AUD-8798', timestamp: '2026-09-09 06:20 PM', user: 'Rajesh Sharma', role: 'TENANT_ADMIN', action: 'EMPLOYEE_PROVISION', details: 'Provisioned Neha Gupta as Customer Service Representative', ip: '192.168.1.5' },
-  ]);
+  // Audit Logs state (Tenant-scoped isolation)
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => {
+    if (user?.tenantId && user.tenantId !== 1) {
+      try {
+        const saved = localStorage.getItem(`megamart_tenant_${user.tenantId}_audit_logs`);
+        if (saved) return JSON.parse(saved);
+      } catch (e) {}
+      return [
+        { 
+          id: `AUD-${Date.now().toString().slice(-4)}`, 
+          timestamp: new Date().toLocaleDateString('en-IN') + ' ' + new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }), 
+          user: user.name || 'Tenant Admin', 
+          role: 'TENANT_ADMIN', 
+          action: 'TENANT_PROVISIONED', 
+          details: `Tenant workspace & PostgreSQL isolated schema provisioned for ${tenantDetails?.companyName || user.name}`, 
+          ip: '127.0.0.1' 
+        }
+      ];
+    }
+    return [
+      { id: 'AUD-8801', timestamp: '2026-09-10 08:45 AM', user: 'Vikram Malhotra', role: 'STORE_MANAGER', action: 'MANAGER_OVERRIDE', details: 'Approved ₹850 refund on Receipt #INV-891024', ip: '192.168.1.45' },
+      { id: 'AUD-8800', timestamp: '2026-09-10 08:15 AM', user: 'Ananya Deshmukh', role: 'ACCOUNTANT', action: 'PAYOUT_RELEASE', details: 'Released ₹1,45,000 to Amul Dairy India Ltd', ip: '192.168.1.12' },
+      { id: 'AUD-8799', timestamp: '2026-09-10 07:30 AM', user: 'Priya Patel', role: 'CASHIER', action: 'USER_LOGIN', details: 'Shift Login on POS Register #1', ip: '192.168.1.101' },
+      { id: 'AUD-8798', timestamp: '2026-09-09 06:20 PM', user: 'Rajesh Sharma', role: 'TENANT_ADMIN', action: 'EMPLOYEE_PROVISION', details: 'Provisioned Neha Gupta as Customer Service Representative', ip: '192.168.1.5' },
+    ];
+  });
+
+  useEffect(() => {
+    if (user?.tenantId && user.tenantId !== 1) {
+      try { localStorage.setItem(`megamart_tenant_${user.tenantId}_audit_logs`, JSON.stringify(auditLogs)); } catch (e) {}
+    }
+  }, [auditLogs, user?.tenantId]);
 
   // ─── STRICT QUOTA CHECK 1: REGISTER OUTLET STORE ───
   const handleOpenAddStore = () => {
@@ -857,23 +892,47 @@ export const TenantAdminDashboardPage: React.FC = () => {
   );
 
   // ─── SUB-VIEW 3: REVENUE ANALYTICS ───
-  const renderRevenue = () => (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="font-extrabold text-amber-950 text-base">Revenue Analytics & Profit Margins</h2>
-          <p className="text-xs text-stone-500">Gross sales performance across all chain branches.</p>
+  const renderRevenue = () => {
+    const isNewTenant = user?.tenantId && user.tenantId !== 1;
+    const currentSales = data.totalSales || 0;
+    
+    // Dynamic trend points: 0s if no sales recorded yet
+    const points = isNewTenant
+      ? (currentSales > 0
+          ? [
+              Math.round(currentSales * 0.15),
+              Math.round(currentSales * 0.35),
+              Math.round(currentSales * 0.60),
+              Math.round(currentSales * 0.85),
+              currentSales
+            ]
+          : [0, 0, 0, 0, 0])
+      : [240000, 310000, 380000, 420000, 485290];
+
+    const subtitle = isNewTenant
+      ? (currentSales > 0
+          ? `Consolidated revenue analytics across ${outlets.length} location(s)`
+          : `Consolidated revenue analytics across ${outlets.length} location(s) — No transactions recorded yet`)
+      : `Consolidated revenue analytics across ${outlets.length} supermarket locations`;
+
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="font-extrabold text-amber-950 text-base">Revenue Analytics & Profit Margins</h2>
+            <p className="text-xs text-stone-500">Gross sales performance across all chain branches.</p>
+          </div>
         </div>
+        <AreaLineChartWidget
+          title="Monthly Gross Sales Trend (2026)"
+          subtitle={subtitle}
+          points={points}
+          labels={['May', 'Jun', 'Jul', 'Aug', 'Sep']}
+          valuePrefix="₹"
+        />
       </div>
-      <AreaLineChartWidget
-        title="Monthly Gross Sales Trend (2026)"
-        subtitle="Consolidated revenue analytics across 3 supermarket locations"
-        points={[240000, 310000, 380000, 420000, 485290]}
-        labels={['May', 'Jun', 'Jul', 'Aug', 'Sep']}
-        valuePrefix="₹"
-      />
-    </div>
-  );
+    );
+  };
 
   // ─── SUB-VIEW 4: USER PROVISIONING (EMPLOYEE MANAGEMENT) ───
   const renderUsers = () => (
@@ -1067,65 +1126,115 @@ export const TenantAdminDashboardPage: React.FC = () => {
   };
 
   // ─── SUB-VIEW 6: GST TAX LEDGER ───
-  const renderGst = () => (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="font-extrabold text-amber-950 text-base">GST Tax Ledger & Compliance</h2>
-          <p className="text-xs text-stone-500">Consolidated CGST, SGST, IGST tax liability breakdown for filing GSTR-1 and GSTR-3B.</p>
+  const renderGst = () => {
+    const isNewTenant = user?.tenantId && user.tenantId !== 1;
+    const currentSales = data.totalSales || 0;
+
+    // Calculate dynamic slabs based on tenant's total sales
+    const gstRows = isNewTenant
+      ? (currentSales > 0
+          ? [
+              {
+                slab: '18% GST (Packaged Foods)',
+                taxable: Math.round(currentSales * 0.55),
+                cgst: Math.round(currentSales * 0.55 * 0.09),
+                sgst: Math.round(currentSales * 0.55 * 0.09),
+                total: Math.round(currentSales * 0.55 * 0.18),
+                status: 'READY_FOR_GSTR1'
+              },
+              {
+                slab: '12% GST (Dairy & Cold)',
+                taxable: Math.round(currentSales * 0.25),
+                cgst: Math.round(currentSales * 0.25 * 0.06),
+                sgst: Math.round(currentSales * 0.25 * 0.06),
+                total: Math.round(currentSales * 0.25 * 0.12),
+                status: 'READY_FOR_GSTR1'
+              },
+              {
+                slab: '5% GST (Staples & Breads)',
+                taxable: Math.round(currentSales * 0.20),
+                cgst: Math.round(currentSales * 0.20 * 0.025),
+                sgst: Math.round(currentSales * 0.20 * 0.025),
+                total: Math.round(currentSales * 0.20 * 0.05),
+                status: 'READY_FOR_GSTR1'
+              }
+            ]
+          : [
+              { slab: '18% GST (Packaged Foods)', taxable: 0, cgst: 0, sgst: 0, total: 0, status: 'NO_SALES' },
+              { slab: '12% GST (Dairy & Cold)', taxable: 0, cgst: 0, sgst: 0, total: 0, status: 'NO_SALES' },
+              { slab: '5% GST (Staples & Breads)', taxable: 0, cgst: 0, sgst: 0, total: 0, status: 'NO_SALES' }
+            ])
+      : [
+          { slab: '18% GST (Packaged Foods)', taxable: 269444.00, cgst: 24250.00, sgst: 24250.00, total: 48500.00, status: 'READY_FOR_GSTR1' },
+          { slab: '12% GST (Dairy & Cold)', taxable: 201666.00, cgst: 12100.00, sgst: 12100.00, total: 24200.00, status: 'READY_FOR_GSTR1' },
+          { slab: '5% GST (Staples & Breads)', taxable: 292000.00, cgst: 7300.00, sgst: 7300.00, total: 14600.00, status: 'READY_FOR_GSTR1' }
+        ];
+
+    const totalGstLiability = gstRows.reduce((acc, r) => acc + r.total, 0);
+    const gstCenterLabel = totalGstLiability > 0 ? `₹${(totalGstLiability / 1000).toFixed(1)}k` : '₹0';
+
+    const handleDownloadGstCsv = () => {
+      const csv = 'GST_Slab,Taxable_Value,CGST,SGST,IGST,Net_Tax\n' +
+        gstRows.map(r => `${r.slab.split(' ')[0]},${r.taxable.toFixed(2)},${r.cgst.toFixed(2)},${r.sgst.toFixed(2)},0.00,${r.total.toFixed(2)}`).join('\n');
+      handleExportCsv('GSTR1_Filing_Report', csv);
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="font-extrabold text-amber-950 text-base">GST Tax Ledger & Compliance</h2>
+            <p className="text-xs text-stone-500">Consolidated CGST, SGST, IGST tax liability breakdown for filing GSTR-1 and GSTR-3B.</p>
+          </div>
+          <button
+            onClick={handleDownloadGstCsv}
+            className="gold-button-primary text-xs px-4 py-2 rounded-xl font-bold cursor-pointer flex items-center gap-1.5"
+          >
+            <Download className="w-3.5 h-3.5" /> Download GSTR-1 Tax Return CSV
+          </button>
         </div>
-        <button
-          onClick={() => handleExportCsv('GSTR1_Filing_Report', 'GST_Slab,Taxable_Value,CGST,SGST,IGST,Net_Tax\n18%,269444.00,24250.00,24250.00,0.00,48500.00\n12%,201666.00,12100.00,12100.00,0.00,24200.00\n5%,292000.00,7300.00,7300.00,0.00,14600.00')}
-          className="gold-button-primary text-xs px-4 py-2 rounded-xl font-bold cursor-pointer flex items-center gap-1.5"
-        >
-          <Download className="w-3.5 h-3.5" /> Download GSTR-1 Tax Return CSV
-        </button>
-      </div>
 
-      <DonutChartWidget
-        title="Chain Tax Liability Distribution"
-        subtitle="Consolidated tax inputs"
-        centerLabel="TOTAL GST"
-        centerValue="₹87.3k"
-        segments={[
-          { label: '18% GST (Groceries)', value: 48500, color: '#78350F' },
-          { label: '12% GST (Dairy)', value: 24200, color: '#D97706' },
-          { label: '5% GST (Essentials)', value: 14600, color: '#F59E0B' },
-        ]}
-      />
+        <DonutChartWidget
+          title="Chain Tax Liability Distribution"
+          subtitle="Consolidated tax inputs"
+          centerLabel="TOTAL GST"
+          centerValue={gstCenterLabel}
+          segments={[
+            { label: '18% GST (Groceries)', value: gstRows[0].total, color: '#78350F' },
+            { label: '12% GST (Dairy)', value: gstRows[1].total, color: '#D97706' },
+            { label: '5% GST (Essentials)', value: gstRows[2].total, color: '#F59E0B' },
+          ]}
+        />
 
-      <div className="gold-card overflow-hidden">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-amber-50/80 text-amber-950 uppercase font-extrabold text-[10px] border-b border-amber-200">
-            <tr>
-              <th className="p-3">GST Tax Slab</th>
-              <th className="p-3 text-right">Taxable Turnover (₹)</th>
-              <th className="p-3 text-right">CGST @ 50% (₹)</th>
-              <th className="p-3 text-right">SGST @ 50% (₹)</th>
-              <th className="p-3 text-right font-black">Total Tax Liability (₹)</th>
-              <th className="p-3 text-center">Filing Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-stone-100 font-medium text-stone-800">
-            {[
-              { slab: '18% GST (Packaged Foods)', taxable: 269444.00, cgst: 24250.00, sgst: 24250.00, total: 48500.00, status: 'READY_FOR_GSTR1' },
-              { slab: '12% GST (Dairy & Cold)', taxable: 201666.00, cgst: 12100.00, sgst: 12100.00, total: 24200.00, status: 'READY_FOR_GSTR1' },
-              { slab: '5% GST (Staples & Breads)', taxable: 292000.00, cgst: 7300.00, sgst: 7300.00, total: 14600.00, status: 'READY_FOR_GSTR1' },
-            ].map((row, i) => (
-              <tr key={i} className="hover:bg-amber-50/40">
-                <td className="p-3 font-bold text-amber-950">{row.slab}</td>
-                <td className="p-3 text-right font-mono">₹{row.taxable.toLocaleString()}</td>
-                <td className="p-3 text-right font-mono">₹{row.cgst.toLocaleString()}</td>
-                <td className="p-3 text-right font-mono">₹{row.sgst.toLocaleString()}</td>
-                <td className="p-3 text-right font-mono font-black text-amber-900">₹{row.total.toLocaleString()}</td>
-                <td className="p-3 text-center"><span className="badge-emerald">{row.status}</span></td>
+        <div className="gold-card overflow-hidden">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-amber-50/80 text-amber-950 uppercase font-extrabold text-[10px] border-b border-amber-200">
+              <tr>
+                <th className="p-3">GST Tax Slab</th>
+                <th className="p-3 text-right">Taxable Turnover (₹)</th>
+                <th className="p-3 text-right">CGST @ 50% (₹)</th>
+                <th className="p-3 text-right">SGST @ 50% (₹)</th>
+                <th className="p-3 text-right font-black">Total Tax Liability (₹)</th>
+                <th className="p-3 text-center">Filing Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-stone-100 font-medium text-stone-800">
+              {gstRows.map((row, i) => (
+                <tr key={i} className="hover:bg-amber-50/40">
+                  <td className="p-3 font-bold text-amber-950">{row.slab}</td>
+                  <td className="p-3 text-right font-mono">₹{row.taxable.toLocaleString('en-IN')}</td>
+                  <td className="p-3 text-right font-mono">₹{row.cgst.toLocaleString('en-IN')}</td>
+                  <td className="p-3 text-right font-mono">₹{row.sgst.toLocaleString('en-IN')}</td>
+                  <td className="p-3 text-right font-mono font-black text-amber-900">₹{row.total.toLocaleString('en-IN')}</td>
+                  <td className="p-3 text-center"><span className="badge-emerald">{row.status}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // ─── SUB-VIEW 7: AUDIT LOGS ───
   const renderAudit = () => (

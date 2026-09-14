@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavStore } from '../store/useNavStore';
 import { useNotificationStore } from '../store/useNotificationStore';
+import { useAuthStore } from '../store/useAuthStore';
 import { BarChartWidget, DonutChartWidget } from '../components/AnalyticsCharts';
 import { CustomerDirectoryView } from '../components/CustomerDirectoryView';
 import { Search, ShieldAlert, CheckCircle2, User, Gift, DollarSign, RotateCcw, Lock, AlertTriangle, FileText, Phone, Users, Plus, Award, Printer, Download, X } from 'lucide-react';
@@ -13,6 +14,8 @@ interface ReturnException {
 export const CustomerServicePage: React.FC = () => {
   const { activeNavItem } = useNavStore();
   const { addNotification } = useNotificationStore();
+  const { user } = useAuthStore();
+  const isNewTenant = !!(user?.tenantId && user.tenantId !== 1);
   const [msg, setMsg] = useState('');
 
   // Receipt Lookup
@@ -25,12 +28,29 @@ export const CustomerServicePage: React.FC = () => {
   const [isOverrideModal, setIsOverrideModal] = useState(false);
   const [managerPin, setManagerPin] = useState('');
 
-  // Exceptions Audit Log
-  const [exceptions, setExceptions] = useState<ReturnException[]>([
-    { id: 'RET-901', receiptId: 'INV-891024', customerName: 'Rohan Sharma', item: 'Blue Tokai Coffee Beans 1kg', refundAmount: 850.00, reason: 'Expired / Damaged', timestamp: 'Today, 14:20 PM', status: 'MANAGER_APPROVED' },
-    { id: 'RET-900', receiptId: 'INV-890912', customerName: 'Anjali Verma', item: 'Epigamia Greek Yogurt 500g', refundAmount: 95.00, reason: 'Customer Dissatisfied', timestamp: 'Today, 11:15 AM', status: 'AUTO_PROCESSED' },
-    { id: 'RET-899', receiptId: 'INV-890845', customerName: 'Sunil Mehta', item: 'Britannia Sourdough Bread 500g', refundAmount: 110.00, reason: 'Defective Packaging', timestamp: 'Yesterday, 04:30 PM', status: 'MANAGER_APPROVED' },
-  ]);
+  // Exceptions Audit Log (Tenant scoped)
+  const [exceptions, setExceptions] = useState<ReturnException[]>(() => {
+    if (isNewTenant) {
+      try {
+        const saved = localStorage.getItem(`megamart_tenant_${user.tenantId}_refund_exceptions`);
+        if (saved) return JSON.parse(saved);
+      } catch (e) {}
+      return [];
+    }
+    return [
+      { id: 'RET-901', receiptId: 'INV-891024', customerName: 'Rohan Sharma', item: 'Blue Tokai Coffee Beans 1kg', refundAmount: 850.00, reason: 'Expired / Damaged', timestamp: 'Today, 14:20 PM', status: 'MANAGER_APPROVED' },
+      { id: 'RET-900', receiptId: 'INV-890912', customerName: 'Anjali Verma', item: 'Epigamia Greek Yogurt 500g', refundAmount: 95.00, reason: 'Customer Dissatisfied', timestamp: 'Today, 11:15 AM', status: 'AUTO_PROCESSED' },
+      { id: 'RET-899', receiptId: 'INV-890845', customerName: 'Sunil Mehta', item: 'Britannia Sourdough Bread 500g', refundAmount: 110.00, reason: 'Defective Packaging', timestamp: 'Yesterday, 04:30 PM', status: 'MANAGER_APPROVED' },
+    ];
+  });
+
+  useEffect(() => {
+    if (isNewTenant && user?.tenantId) {
+      try {
+        localStorage.setItem(`megamart_tenant_${user.tenantId}_refund_exceptions`, JSON.stringify(exceptions));
+      } catch (e) {}
+    }
+  }, [exceptions, isNewTenant, user?.tenantId]);
 
   const handleLookup = () => {
     setFoundReceipt({

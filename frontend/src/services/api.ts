@@ -38,6 +38,9 @@ export const authApi = {
     password: string;
     planId: number;
     billingCycle?: string;
+    paymentMethod?: string;
+    paymentId?: string;
+    amountPaid?: number;
   }) => {
     const res = await fetch(`${API_BASE}/auth/register-tenant`, {
       method: 'POST',

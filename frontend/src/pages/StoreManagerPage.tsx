@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavStore } from '../store/useNavStore';
 import { useRetailStore } from '../store/useRetailStore';
 import { useNotificationStore } from '../store/useNotificationStore';
+import { useAuthStore } from '../store/useAuthStore';
 import { AreaLineChartWidget, BarChartWidget } from '../components/AnalyticsCharts';
 import { CustomerDirectoryView } from '../components/CustomerDirectoryView';
 import {
@@ -20,19 +21,72 @@ interface StaffMember {
   shift: 'Morning' | 'Evening' | 'Night';
 }
 
+interface LossIncident {
+  id: string;
+  register: string;
+  cashier: string;
+  type: string;
+  amount: number;
+  time: string;
+  status: string;
+}
+
 export const StoreManagerPage: React.FC = () => {
   const { activeNavItem } = useNavStore();
   const { products, updateStockQuantity, outlets } = useRetailStore();
   const { addNotification } = useNotificationStore();
+  const { user } = useAuthStore();
+  const isNewTenant = !!(user?.tenantId && user.tenantId !== 1);
   const [msg, setMsg] = useState('');
 
-  // Staff Roster State
-  const [staffList, setStaffList] = useState<StaffMember[]>([
-    { id: 1, name: 'Priya Patel', role: 'CASHIER', email: 'cashier@megamart.com', pin: '1234', status: 'ON POS', shift: 'Morning' },
-    { id: 2, name: 'Neha Gupta', role: 'CUSTOMER_SERVICE', email: 'cs@megamart.com', pin: '5678', status: 'AT DESK', shift: 'Morning' },
-    { id: 3, name: 'Suresh Kumar', role: 'INVENTORY_CLERK', email: 'clerk@megamart.com', pin: '9012', status: 'AUDITING', shift: 'Morning' },
-    { id: 4, name: 'Rahul Mehta', role: 'CASHIER', email: 'cashier2@megamart.com', pin: '3456', status: 'OFF DUTY', shift: 'Evening' },
-  ]);
+  // Staff Roster State (Tenant scoped)
+  const [staffList, setStaffList] = useState<StaffMember[]>(() => {
+    if (isNewTenant) {
+      try {
+        const saved = localStorage.getItem(`megamart_tenant_${user.tenantId}_staff`);
+        if (saved) return JSON.parse(saved);
+      } catch (e) {}
+      return [];
+    }
+    return [
+      { id: 1, name: 'Priya Patel', role: 'CASHIER', email: 'cashier@megamart.com', pin: '1234', status: 'ON POS', shift: 'Morning' },
+      { id: 2, name: 'Neha Gupta', role: 'CUSTOMER_SERVICE', email: 'cs@megamart.com', pin: '5678', status: 'AT DESK', shift: 'Morning' },
+      { id: 3, name: 'Suresh Kumar', role: 'INVENTORY_CLERK', email: 'clerk@megamart.com', pin: '9012', status: 'AUDITING', shift: 'Morning' },
+      { id: 4, name: 'Rahul Mehta', role: 'CASHIER', email: 'cashier2@megamart.com', pin: '3456', status: 'OFF DUTY', shift: 'Evening' },
+    ];
+  });
+
+  // Loss Prevention Incidents (Tenant scoped)
+  const [incidents, setIncidents] = useState<LossIncident[]>(() => {
+    if (isNewTenant) {
+      try {
+        const saved = localStorage.getItem(`megamart_tenant_${user.tenantId}_incidents`);
+        if (saved) return JSON.parse(saved);
+      } catch (e) {}
+      return [];
+    }
+    return [
+      { id: 'INC-401', register: 'Register #1', cashier: 'Priya Patel', type: 'HIGH_VALUE_REFUND', amount: 850, time: '14:20 PM', status: 'APPROVED' },
+      { id: 'INC-402', register: 'Register #2', cashier: 'Rahul Mehta', type: 'VOIDED_CART_ITEM', amount: 110, time: '11:15 AM', status: 'AUDITED' },
+    ];
+  });
+
+  useEffect(() => {
+    if (isNewTenant && user?.tenantId) {
+      try {
+        localStorage.setItem(`megamart_tenant_${user.tenantId}_staff`, JSON.stringify(staffList));
+      } catch (e) {}
+    }
+  }, [staffList, isNewTenant, user?.tenantId]);
+
+  useEffect(() => {
+    if (isNewTenant && user?.tenantId) {
+      try {
+        localStorage.setItem(`megamart_tenant_${user.tenantId}_incidents`, JSON.stringify(incidents));
+      } catch (e) {}
+    }
+  }, [incidents, isNewTenant, user?.tenantId]);
+
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [generatedPin, setGeneratedPin] = useState('');
@@ -49,12 +103,6 @@ export const StoreManagerPage: React.FC = () => {
   const [poQtyCartons, setPoQtyCartons] = useState('10');
 
   const [inventorySearch, setInventorySearch] = useState('');
-
-  // Loss Prevention Incidents
-  const [incidents, setIncidents] = useState([
-    { id: 'INC-401', register: 'Register #1', cashier: 'Priya Patel', type: 'HIGH_VALUE_REFUND', amount: 850, time: '14:20 PM', status: 'APPROVED' },
-    { id: 'INC-402', register: 'Register #2', cashier: 'Rahul Mehta', type: 'VOIDED_CART_ITEM', amount: 110, time: '11:15 AM', status: 'AUDITED' },
-  ]);
 
   const handleResetPin = (staff: StaffMember) => {
     setSelectedStaff(staff);

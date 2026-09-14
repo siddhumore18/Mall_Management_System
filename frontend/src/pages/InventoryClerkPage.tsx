@@ -14,6 +14,15 @@ import {
   Printer, Lock, Tag, QrCode, Truck, PackagePlus, Boxes, ClipboardCheck, Download, X, Sparkles, Zap, Layers
 } from 'lucide-react';
 
+interface ReceivedPO {
+  id: string;
+  product: string;
+  qty: number;
+  batch: string;
+  date: string;
+  status: string;
+}
+
 export const InventoryClerkPage: React.FC = () => {
   const { activeNavItem } = useNavStore();
   const { user } = useAuthStore();
@@ -38,19 +47,55 @@ export const InventoryClerkPage: React.FC = () => {
   const [customCategory, setCustomCategory] = useState('Beverages & Pantry');
   const [customUnit, setCustomUnit] = useState('pack');
 
+  const isNewTenant = !!(user?.tenantId && user.tenantId !== 1);
+
   const [poVerifyBarcode, setPoVerifyBarcode] = useState('');
   const [poBarcodeError, setPoBarcodeError] = useState('');
   const [isPoCameraOpen, setIsPoCameraOpen] = useState(false);
   const [poBatch, setPoBatch] = useState(`BATCH-PO-${Math.floor(100 + Math.random() * 900)}`);
   const [poQty, setPoQty] = useState('50');
   const [poExpiry, setPoExpiry] = useState('2026-10-15');
-  const [receivedPOs, setReceivedPOs] = useState([
-    { id: 'PO-4521', product: 'Amul Taaza Milk 1L', qty: 100, batch: 'BATCH-PO-451', date: 'Today, 08:30 AM', status: 'Verified & Intake Completed' },
-    { id: 'PO-4520', product: 'Britannia Sourdough Bread 500g', qty: 60, batch: 'BATCH-PO-450', date: 'Yesterday, 04:15 PM', status: 'Verified & Intake Completed' },
-  ]);
+  const [receivedPOs, setReceivedPOs] = useState<ReceivedPO[]>(() => {
+    if (isNewTenant) {
+      try {
+        const saved = localStorage.getItem(`megamart_tenant_${user?.tenantId}_received_pos`);
+        if (saved) return JSON.parse(saved);
+      } catch (e) {}
+      return [];
+    }
+    return [
+      { id: 'PO-4521', product: 'Amul Taaza Milk 1L', qty: 100, batch: 'BATCH-PO-451', date: 'Today, 08:30 AM', status: 'Verified & Intake Completed' },
+      { id: 'PO-4520', product: 'Britannia Sourdough Bread 500g', qty: 60, batch: 'BATCH-PO-450', date: 'Yesterday, 04:15 PM', status: 'Verified & Intake Completed' },
+    ];
+  });
 
-  // Physical Stock Audit state
-  const [auditCounts, setAuditCounts] = useState<Record<number, number>>({ 6: 12, 2: 38, 1: 85, 4: 15, 5: 65 });
+  // Physical Stock Audit state (Tenant scoped)
+  const [auditCounts, setAuditCounts] = useState<Record<number, number>>(() => {
+    if (isNewTenant) {
+      try {
+        const saved = localStorage.getItem(`megamart_tenant_${user?.tenantId}_audit_counts`);
+        if (saved) return JSON.parse(saved);
+      } catch (e) {}
+      return {};
+    }
+    return { 6: 12, 2: 38, 1: 85, 4: 15, 5: 65 };
+  });
+
+  useEffect(() => {
+    if (isNewTenant && user?.tenantId) {
+      try {
+        localStorage.setItem(`megamart_tenant_${user.tenantId}_received_pos`, JSON.stringify(receivedPOs));
+      } catch (e) {}
+    }
+  }, [receivedPOs, isNewTenant, user?.tenantId]);
+
+  useEffect(() => {
+    if (isNewTenant && user?.tenantId) {
+      try {
+        localStorage.setItem(`megamart_tenant_${user.tenantId}_audit_counts`, JSON.stringify(auditCounts));
+      } catch (e) {}
+    }
+  }, [auditCounts, isNewTenant, user?.tenantId]);
 
   // Barcode Printer
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);

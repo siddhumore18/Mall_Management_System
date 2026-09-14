@@ -3,9 +3,10 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useRetailStore } from '../store/useRetailStore';
 import { authApi, tenantApi, planApi } from '../services/api';
 import { SubscriptionPlan } from '../types';
+import { PaymentGatewayModal } from '../components/PaymentGatewayModal';
 import { 
   Building2, ArrowRight, ArrowLeft, ShieldCheck, 
-  Lock, AlertCircle, Sparkles, UserPlus, CheckCircle2, Shield, Calendar, Clock
+  Lock, AlertCircle, Sparkles, UserPlus, CheckCircle2, Shield, Calendar, Clock, CreditCard
 } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
@@ -31,6 +32,18 @@ export const LoginPage: React.FC = () => {
     { id: 2, name: 'Standard Chain', maxStores: 10, maxUsers: 50, price: 14999 },
     { id: 3, name: 'Enterprise Hyper-Scale', maxStores: 50, maxUsers: 500, price: 39999 }
   ]);
+
+  // Payment Checkout Modal State
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [pendingRegistration, setPendingRegistration] = useState<{
+    companyName: string;
+    adminName: string;
+    email: string;
+    password: string;
+    planId: number;
+    billingCycle: 'MONTHLY' | 'ANNUAL';
+    amount: number;
+  } | null>(null);
 
   useEffect(() => {
     planApi.getPlans().then(plans => {
@@ -97,32 +110,59 @@ export const LoginPage: React.FC = () => {
       return;
     }
 
+    setError('');
+    
+    // Calculate required subscription payment amount
+    const selPlan = availablePlans.find(p => p.id === planId) || availablePlans[0];
+    const basePrice = Number(selPlan?.price || 4999);
+    const payableAmount = billingCycle === 'ANNUAL' ? basePrice * 10 : basePrice;
+
+    setPendingRegistration({
+      companyName: companyName.trim(),
+      adminName: adminName.trim(),
+      email: regEmail.trim(),
+      password: regPassword,
+      planId,
+      billingCycle,
+      amount: payableAmount
+    });
+
+    // Open Payment Gateway Checkout before registration
+    setIsPaymentModalOpen(true);
+  };
+
+  const handlePaymentSuccess = async (paymentData: { method: string; paymentId: string; orderId: string; amount: number }) => {
+    if (!pendingRegistration) return;
+    setIsPaymentModalOpen(false);
     setLoading(true);
     setError('');
 
     try {
       const res = await authApi.registerTenant({
-        companyName: companyName.trim(),
-        adminName: adminName.trim(),
-        email: regEmail.trim(),
-        password: regPassword,
-        planId,
-        billingCycle
+        companyName: pendingRegistration.companyName,
+        adminName: pendingRegistration.adminName,
+        email: pendingRegistration.email,
+        password: pendingRegistration.password,
+        planId: pendingRegistration.planId,
+        billingCycle: pendingRegistration.billingCycle,
+        paymentMethod: paymentData.method,
+        paymentId: paymentData.paymentId,
+        amountPaid: paymentData.amount
       });
 
-      await useRetailStore.getState().loadTenantData(res.user.tenantId, companyName.trim());
+      await useRetailStore.getState().loadTenantData(res.user.tenantId, pendingRegistration.companyName);
 
       let tenantInfo = null;
       try {
         tenantInfo = await tenantApi.getMe();
       } catch (e) {}
 
-      setSuccessMsg('Account registered securely! Redirecting to your workspace...');
+      setSuccessMsg(`Subscription payment verified (₹${paymentData.amount.toLocaleString('en-IN')})! Activating workspace...`);
       setTimeout(() => {
         setAuth(res.user, res.token, tenantInfo);
       }, 800);
     } catch (err: any) {
-      setError(err?.message || 'Tenant registration failed. Email may already be in use.');
+      setError(err?.message || 'Tenant registration failed after payment verification.');
     } finally {
       setLoading(false);
     }
@@ -426,8 +466,15 @@ export const LoginPage: React.FC = () => {
                     <span>Provisioning Tenant Database Schema...</span>
                   ) : (
                     <>
-                      <UserPlus className="w-4 h-4" />
-                      <span>Create Account & Start Workspace</span>
+                      <CreditCard className="w-4 h-4" />
+                      <span>
+                        Proceed to Subscription Payment (₹{(() => {
+                          const selPlan = availablePlans.find(p => p.id === planId) || availablePlans[0];
+                          const basePrice = Number(selPlan?.price || 4999);
+                          return (billingCycle === 'ANNUAL' ? basePrice * 10 : basePrice).toLocaleString('en-IN');
+                        })()})
+                      </span>
+                      <ArrowRight className="w-4 h-4" />
                     </>
                   )}
                 </button>
@@ -442,6 +489,19 @@ export const LoginPage: React.FC = () => {
         </div>
 
       </div>
+
+      {/* Subscription Payment Gateway Modal */}
+      {pendingRegistration && (
+        <PaymentGatewayModal
+          isOpen={isPaymentModalOpen}
+          onClose={() => setIsPaymentModalOpen(false)}
+          onSuccess={handlePaymentSuccess}
+          amount={pendingRegistration.amount}
+          description={`${availablePlans.find(p => p.id === pendingRegistration.planId)?.name || 'SaaS Plan'} (${pendingRegistration.billingCycle})`}
+          customerName={pendingRegistration.adminName}
+          customerPhone="9876543210"
+        />
+      )}
     </div>
   );
 };
