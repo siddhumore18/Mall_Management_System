@@ -49,7 +49,7 @@ export const InteractiveProductDemo: React.FC = () => {
 
   // Launch live session with role
   const handleTestDriveRole = (role: Role) => {
-    const roleProfiles: Record<Role, { name: string; email: string; company: string }> = {
+    const roleProfiles: Partial<Record<Role, { name: string; email: string; company: string }>> = {
       CASHIER: { name: 'Demo Cashier', email: 'cashier@megamart.com', company: 'MegaMart Flagship Store' },
       TENANT_ADMIN: { name: 'Vikram Mehta (Director)', email: 'admin@megamart.com', company: 'MegaMart Retail Holdings' },
       INVENTORY_CLERK: { name: 'Suresh Kumar (Logistics)', email: 'clerk@megamart.com', company: 'MegaMart Central Warehouse' },
@@ -59,7 +59,7 @@ export const InteractiveProductDemo: React.FC = () => {
       //SUPER_ADMIN: { name: 'Platform Architect', email: 'superadmin@megamart.com', company: 'MegaMart Cloud Networks' }
     };
 
-    const profile = roleProfiles[role];
+    const profile = roleProfiles[role] || roleProfiles.CASHIER!;
     const demoUser = {
       id: 999,
       email: profile.email,
@@ -153,7 +153,7 @@ export const InteractiveProductDemo: React.FC = () => {
     // }
   ];
 
-  const activeRoleData = rolesConfig.find(r => r.role === selectedRole)!;
+  const activeRoleData = rolesConfig.find(r => r.role === selectedRole) || rolesConfig[0];
 
   return (
     <section className="relative z-10 px-3 sm:px-4 md:px-8 py-8 sm:py-12 max-w-6xl mx-auto space-y-6 sm:space-y-8 w-full">
