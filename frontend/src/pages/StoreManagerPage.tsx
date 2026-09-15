@@ -252,6 +252,7 @@ export const StoreManagerPage: React.FC = () => {
       </div>
 
       <div className="gold-card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead className="bg-amber-50/80 text-amber-950 uppercase font-extrabold text-[10px] border-b border-amber-200">
             <tr>
@@ -283,6 +284,7 @@ export const StoreManagerPage: React.FC = () => {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
@@ -320,6 +322,7 @@ export const StoreManagerPage: React.FC = () => {
         </div>
 
         <div className="gold-card overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-amber-50/80 text-amber-950 uppercase font-extrabold text-[10px] border-b border-amber-200">
               <tr>
@@ -359,6 +362,7 @@ export const StoreManagerPage: React.FC = () => {
               })}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     );
@@ -404,6 +408,7 @@ export const StoreManagerPage: React.FC = () => {
       </div>
 
       <div className="gold-card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead className="bg-amber-50/80 text-amber-950 uppercase font-extrabold text-[10px] border-b border-amber-200">
             <tr>
@@ -430,6 +435,7 @@ export const StoreManagerPage: React.FC = () => {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
@@ -453,8 +459,8 @@ export const StoreManagerPage: React.FC = () => {
 
       {/* ─── MODAL 1: RESET SECURITY PIN MODAL ─── */}
       {isPinModalOpen && (
-        <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-slide-up">
-          <div className="gold-card max-w-xs w-full p-5 space-y-3 text-center bg-white border-2 border-amber-300 shadow-2xl">
+        <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-slide-up">
+          <div className="gold-card max-w-xs w-full p-4 sm:p-5 space-y-3 text-center bg-white border-2 border-amber-300 shadow-2xl max-h-[90vh] overflow-y-auto">
             <h3 className="font-extrabold text-amber-950 text-sm">Security PIN Generated</h3>
             <p className="text-xs text-stone-500">New PIN assigned for <strong className="text-stone-900">{selectedStaff?.name}</strong>:</p>
             <div className="bg-amber-100 border border-amber-300 py-3 rounded-xl font-mono text-3xl font-black text-amber-950 tracking-widest">
@@ -469,8 +475,8 @@ export const StoreManagerPage: React.FC = () => {
 
       {/* ─── MODAL 2: ADD STAFF MEMBER MODAL ─── */}
       {isAddStaffOpen && (
-        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-slide-up">
-          <div className="gold-card max-w-md w-full p-6 space-y-4 bg-white border-2 border-amber-300 shadow-2xl">
+        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-slide-up">
+          <div className="gold-card max-w-md w-full p-4 sm:p-6 space-y-4 bg-white border-2 border-amber-300 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-amber-200 pb-2">
               <h3 className="font-extrabold text-amber-950 text-sm flex items-center gap-1.5">
                 <Users className="w-4 h-4 text-amber-700" />
@@ -537,8 +543,8 @@ export const StoreManagerPage: React.FC = () => {
 
       {/* ─── MODAL 3: EMERGENCY PO MODAL ─── */}
       {isPoModalOpen && (
-        <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-slide-up">
-          <div className="gold-card max-w-sm w-full p-6 space-y-4 bg-white border-2 border-amber-300 shadow-2xl">
+        <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-slide-up">
+          <div className="gold-card max-w-sm w-full p-4 sm:p-6 space-y-4 bg-white border-2 border-amber-300 shadow-2xl max-h-[90vh] overflow-y-auto">
             <h3 className="font-extrabold text-amber-950 text-sm">Transmit Emergency Purchase Order</h3>
             <form onSubmit={handleSendPo} className="space-y-3 text-xs">
               <div>

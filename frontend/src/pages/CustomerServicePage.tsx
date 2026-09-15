@@ -186,17 +186,18 @@ export const CustomerServicePage: React.FC = () => {
   // ─── SUB-VIEW 3: EXCEPTION LOG ───
   const renderExceptions = () => (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
           <h2 className="font-extrabold text-amber-950 text-base">Return & Refund Exception Audit Log</h2>
           <p className="text-xs text-stone-500">Historical log of all customer returns and manager approvals.</p>
         </div>
-        <button onClick={handleExportExceptions} className="gold-btn-secondary text-xs px-3.5 py-2 rounded-xl font-bold cursor-pointer flex items-center gap-1.5">
+        <button onClick={handleExportExceptions} className="gold-btn-secondary text-xs px-3.5 py-2 rounded-xl font-bold cursor-pointer flex items-center gap-1.5 shrink-0">
           <Download className="w-3.5 h-3.5" /> Export Log CSV
         </button>
       </div>
 
       <div className="gold-card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead className="bg-amber-50/80 text-amber-950 uppercase font-extrabold text-[10px] border-b border-amber-200">
             <tr>
@@ -221,6 +222,7 @@ export const CustomerServicePage: React.FC = () => {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

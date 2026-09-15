@@ -320,6 +320,7 @@ export const AccountantPage: React.FC = () => {
       />
 
       <div className="gold-card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead className="bg-amber-50/80 text-amber-950 uppercase font-extrabold text-[10px] border-b border-amber-200">
             <tr>
@@ -344,6 +345,7 @@ export const AccountantPage: React.FC = () => {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
@@ -445,6 +447,7 @@ export const AccountantPage: React.FC = () => {
         </div>
 
         <div className="gold-card overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-amber-50/80 text-amber-950 uppercase font-extrabold text-[10px] border-b border-amber-200">
               <tr>
@@ -491,6 +494,7 @@ export const AccountantPage: React.FC = () => {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     );

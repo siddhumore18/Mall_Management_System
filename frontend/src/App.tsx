@@ -73,7 +73,7 @@ export const App: React.FC = () => {
       {/* Right Content Column */}
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         <ShadcnHeader />
-        <main className="flex-1 min-h-0 overflow-y-auto bg-[#FAFAF9] p-6 md:p-8 space-y-6 relative">
+        <main className="flex-1 min-h-0 overflow-y-auto bg-[#FAFAF9] p-3 sm:p-4 md:p-6 lg:p-8 space-y-4 sm:space-y-6 relative">
           {renderRolePage()}
         </main>
       </div>

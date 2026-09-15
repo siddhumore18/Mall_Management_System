@@ -270,14 +270,14 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-stone-50 text-stone-900 flex items-center justify-center p-4 py-8 select-none relative overflow-y-auto animate-slide-up">
+    <div className="min-h-screen w-full bg-stone-50 text-stone-900 flex items-center justify-center p-3 sm:p-4 py-6 sm:py-8 select-none relative overflow-y-auto animate-slide-up">
       {/* Background Ambient Glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[450px] bg-amber-400/15 blur-[140px] rounded-full pointer-events-none z-0"></div>
 
-      <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-12 gap-6 relative z-10">
+      <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-6 relative z-10">
         
-        {/* Left Side: Enterprise Security & Brand Highlights */}
-        <div className="md:col-span-5 gold-card p-6 flex flex-col justify-between space-y-6">
+        {/* Left Side: Enterprise Security & Brand Highlights (Order 2 on mobile) */}
+        <div className="md:col-span-5 order-2 md:order-1 gold-card p-4 sm:p-6 flex flex-col justify-between space-y-4 sm:space-y-6">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="gold-badge text-[9px] font-black uppercase">Enterprise Security</span>
@@ -338,8 +338,8 @@ export const LoginPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Side: Auth Tabs (Login / Register) */}
-        <div className="md:col-span-7 gold-card p-6 flex flex-col justify-between">
+        {/* Right Side: Auth Tabs (Login / Register - Order 1 on mobile) */}
+        <div className="md:col-span-7 order-1 md:order-2 gold-card p-4 sm:p-6 flex flex-col justify-between">
           <div className="space-y-5">
             
             {/* Header with Switcher Tabs */}

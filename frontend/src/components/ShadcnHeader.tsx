@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useRetailStore } from '../store/useRetailStore';
 import { useNotificationStore } from '../store/useNotificationStore';
-import { Bell, MapPin, Clock, LogOut, Shield, User, Check, X, Sparkles, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { useNavStore } from '../store/useNavStore';
+import { Bell, MapPin, Clock, LogOut, Shield, User, Check, X, Sparkles, ArrowRight, CheckCircle2, Menu } from 'lucide-react';
 import { StatusBadge } from './ui/StatusBadge';
 
 const roleLabels: Record<string, string> = {
@@ -19,6 +20,7 @@ export const ShadcnHeader: React.FC = () => {
   const { user, tenantDetails, activeRole, logout } = useAuthStore();
   const { outlets } = useRetailStore();
   const { notifications, updateNotificationStatus, markAllAsRead } = useNotificationStore();
+  const { toggleMobileMenu } = useNavStore();
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [time, setTime] = useState(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
 
@@ -45,13 +47,21 @@ export const ShadcnHeader: React.FC = () => {
   const unreadCount = myNotifs.filter(n => n.status === 'PENDING').length;
 
   return (
-    <header className="h-14 bg-white/95 backdrop-blur-md border-b border-amber-200/60 px-6 flex items-center justify-between select-none shadow-[0_2px_15px_-3px_rgba(217,119,6,0.06)] z-30 sticky top-0">
-      {/* Left Store Location Context */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 bg-amber-50/80 border border-amber-200 px-3 py-1 rounded-xl text-xs font-bold text-amber-950 shadow-2xs">
+    <header className="h-14 bg-white/95 backdrop-blur-md border-b border-amber-200/60 px-3 sm:px-6 flex items-center justify-between select-none shadow-[0_2px_15px_-3px_rgba(217,119,6,0.06)] z-30 sticky top-0 shrink-0">
+      {/* Left Store Location Context & Mobile Hamburger Menu */}
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <button
+          onClick={toggleMobileMenu}
+          className="md:hidden p-1.5 rounded-xl text-amber-950 hover:bg-amber-100/70 border border-amber-200/80 transition-colors cursor-pointer shrink-0"
+          title="Open Navigation Menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+        <div className="flex items-center gap-1.5 sm:gap-2 bg-amber-50/80 border border-amber-200 px-2.5 sm:px-3 py-1 rounded-xl text-xs font-bold text-amber-950 shadow-2xs truncate">
           <StatusBadge label="LIVE" variant="emerald" pulse />
-          <MapPin className="w-3.5 h-3.5 text-amber-600 ml-1" />
-          <span>{activeOutlet}</span>
+          <MapPin className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+          <span className="truncate max-w-[130px] sm:max-w-[200px]">{activeOutlet}</span>
         </div>
 
         <div className="hidden md:flex items-center gap-1.5 text-[11px] text-stone-600 bg-white border border-amber-200/80 px-2.5 py-1 rounded-xl shadow-2xs">
@@ -91,7 +101,7 @@ export const ShadcnHeader: React.FC = () => {
 
           {/* Popover Dropdown */}
           {isNotifOpen && (
-            <div className="absolute right-0 mt-2 w-80 sm:w-96 gold-card p-4 shadow-2xl z-50 bg-white border-2 border-amber-300 space-y-3 animate-slide-up text-xs">
+            <div className="absolute right-0 mt-2 w-[calc(100vw-24px)] sm:w-96 max-w-sm gold-card p-3 sm:p-4 shadow-2xl z-50 bg-white border-2 border-amber-300 space-y-3 animate-slide-up text-xs">
               <div className="flex items-center justify-between border-b border-amber-200 pb-2">
                 <div className="flex items-center gap-1.5 font-extrabold text-amber-950">
                   <Sparkles className="w-4 h-4 text-amber-600" />

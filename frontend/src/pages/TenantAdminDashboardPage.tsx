@@ -863,6 +863,7 @@ export const TenantAdminDashboardPage: React.FC = () => {
       </div>
 
       <div className="gold-card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead className="bg-amber-50/80 text-amber-950 uppercase font-extrabold text-[10px] border-b border-amber-200">
             <tr>
@@ -887,6 +888,7 @@ export const TenantAdminDashboardPage: React.FC = () => {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
@@ -968,6 +970,7 @@ export const TenantAdminDashboardPage: React.FC = () => {
       </div>
 
       <div className="gold-card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead className="bg-amber-50/80 text-amber-950 uppercase font-extrabold text-[10px] border-b border-amber-200">
             <tr>
@@ -1025,6 +1028,7 @@ export const TenantAdminDashboardPage: React.FC = () => {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
@@ -1088,6 +1092,7 @@ export const TenantAdminDashboardPage: React.FC = () => {
         </div>
 
         <div className="gold-card overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-amber-50/80 text-amber-950 uppercase font-extrabold text-[10px] border-b border-amber-200">
               <tr>
@@ -1120,6 +1125,7 @@ export const TenantAdminDashboardPage: React.FC = () => {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     );
@@ -1207,6 +1213,7 @@ export const TenantAdminDashboardPage: React.FC = () => {
         />
 
         <div className="gold-card overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-amber-50/80 text-amber-950 uppercase font-extrabold text-[10px] border-b border-amber-200">
               <tr>
@@ -1231,6 +1238,7 @@ export const TenantAdminDashboardPage: React.FC = () => {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     );
@@ -1253,6 +1261,7 @@ export const TenantAdminDashboardPage: React.FC = () => {
       </div>
 
       <div className="gold-card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead className="bg-amber-50/80 text-amber-950 uppercase font-extrabold text-[10px] border-b border-amber-200">
             <tr>
@@ -1280,6 +1289,7 @@ export const TenantAdminDashboardPage: React.FC = () => {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
@@ -1336,6 +1346,7 @@ export const TenantAdminDashboardPage: React.FC = () => {
       </div>
 
       <div className="gold-card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead className="bg-amber-50/80 text-amber-950 uppercase font-extrabold text-[10px] border-b border-amber-200">
             <tr>
@@ -1375,6 +1386,7 @@ export const TenantAdminDashboardPage: React.FC = () => {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
@@ -1407,6 +1419,7 @@ export const TenantAdminDashboardPage: React.FC = () => {
       </div>
 
       <div className="gold-card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead className="bg-amber-50/80 text-amber-950 uppercase font-extrabold text-[10px] border-b border-amber-200">
             <tr>
@@ -1438,6 +1451,7 @@ export const TenantAdminDashboardPage: React.FC = () => {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
@@ -1465,8 +1479,8 @@ export const TenantAdminDashboardPage: React.FC = () => {
 
       {/* ─── MODAL 1: PROVISION NEW EMPLOYEE MODAL ─── */}
       {isAddUserOpen && (
-        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-slide-up">
-          <div className="gold-card max-w-md w-full p-6 space-y-4 bg-white border-2 border-amber-300 shadow-2xl">
+        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-slide-up">
+          <div className="gold-card max-w-md w-full p-4 sm:p-6 space-y-4 bg-white border-2 border-amber-300 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-amber-200 pb-2">
               <h3 className="font-extrabold text-amber-950 text-sm flex items-center gap-1.5">
                 <UserPlus className="w-4 h-4 text-amber-700" />
@@ -1572,8 +1586,8 @@ export const TenantAdminDashboardPage: React.FC = () => {
 
       {/* ─── MODAL 1B: EDIT EMPLOYEE CREDENTIALS & RESET PASSWORD ─── */}
       {isEditUserOpen && editingUser && (
-        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-slide-up">
-          <div className="gold-card max-w-md w-full p-6 space-y-4 bg-white border-2 border-amber-400 shadow-2xl">
+        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-slide-up">
+          <div className="gold-card max-w-md w-full p-4 sm:p-6 space-y-4 bg-white border-2 border-amber-400 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-amber-200 pb-2">
               <h3 className="font-extrabold text-amber-950 text-sm flex items-center gap-1.5">
                 <Key className="w-4 h-4 text-amber-700" />
@@ -1682,8 +1696,8 @@ export const TenantAdminDashboardPage: React.FC = () => {
 
       {/* ─── MODAL 1C: SUBSCRIPTION TIMELINE & PLAN UPGRADE / RENEWAL ─── */}
       {isUpgradeModalOpen && (
-        <div className="fixed inset-0 bg-stone-900/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-slide-up">
-          <div className="gold-card max-w-lg w-full p-6 space-y-4 bg-white border-2 border-amber-400 shadow-2xl">
+        <div className="fixed inset-0 bg-stone-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-slide-up">
+          <div className="gold-card max-w-lg w-full p-4 sm:p-6 space-y-4 bg-white border-2 border-amber-400 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-amber-200 pb-2">
               <div>
                 <h3 className="font-extrabold text-amber-950 text-sm flex items-center gap-1.5">
@@ -1806,8 +1820,8 @@ export const TenantAdminDashboardPage: React.FC = () => {
 
       {/* ─── MODAL 2: ADD NEW SKU MASTER MODAL ─── */}
       {isAddSkuOpen && (
-        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-slide-up">
-          <div className="gold-card max-w-md w-full p-6 space-y-4 bg-white border-2 border-amber-300 shadow-2xl">
+        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-slide-up">
+          <div className="gold-card max-w-md w-full p-4 sm:p-6 space-y-4 bg-white border-2 border-amber-300 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-amber-200 pb-2">
               <h3 className="font-extrabold text-amber-950 text-sm flex items-center gap-1.5">
                 <Package className="w-4 h-4 text-amber-700" />
@@ -1882,8 +1896,8 @@ export const TenantAdminDashboardPage: React.FC = () => {
 
       {/* ─── MODAL 3: REGISTER NEW OUTLET STORE MODAL ─── */}
       {isAddStoreOpen && (
-        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-slide-up">
-          <div className="gold-card max-w-md w-full p-6 space-y-4 bg-white border-2 border-amber-300 shadow-2xl">
+        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-slide-up">
+          <div className="gold-card max-w-md w-full p-4 sm:p-6 space-y-4 bg-white border-2 border-amber-300 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-amber-200 pb-2">
               <h3 className="font-extrabold text-amber-950 text-sm flex items-center gap-1.5">
                 <Store className="w-4 h-4 text-amber-700" />
@@ -1943,8 +1957,8 @@ export const TenantAdminDashboardPage: React.FC = () => {
 
       {/* ─── MODAL 4: STRICT PLAN QUOTA LIMIT EXCEEDED WARNING MODAL ─── */}
       {isQuotaExceededModalOpen && (
-        <div className="fixed inset-0 bg-stone-900/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-slide-up select-none">
-          <div className="gold-card max-w-md w-full p-6 space-y-4 bg-white border-2 border-rose-500 shadow-2xl relative">
+        <div className="fixed inset-0 bg-stone-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-slide-up select-none">
+          <div className="gold-card max-w-md w-full p-4 sm:p-6 space-y-4 bg-white border-2 border-rose-500 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setIsQuotaExceededModalOpen(false)}
               className="absolute top-3 right-3 text-stone-400 hover:text-stone-700 font-bold"

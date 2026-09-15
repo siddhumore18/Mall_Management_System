@@ -156,15 +156,15 @@ Feel free to ask any specific question or click a quick prompt below!`;
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 select-none">
+    <div className="fixed bottom-3 right-3 sm:bottom-6 sm:right-6 z-50 select-none">
       {/* Floating Toggle Button */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="gold-button-primary p-3.5 rounded-full shadow-2xl flex items-center gap-2 text-white font-bold cursor-pointer group hover:scale-105 transition-all ring-4 ring-amber-500/20"
+          className="gold-button-primary p-3 sm:p-3.5 rounded-full shadow-2xl flex items-center gap-2 text-white font-bold cursor-pointer group hover:scale-105 transition-all ring-4 ring-amber-500/20"
         >
           <div className="relative">
-            <Bot className="w-6 h-6 text-white" />
+            <Bot className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 rounded-full ring-2 ring-white animate-pulse"></span>
           </div>
           <span className="text-xs hidden sm:inline-block font-extrabold pr-1">ProERP Assistant</span>
@@ -173,7 +173,7 @@ Feel free to ask any specific question or click a quick prompt below!`;
 
       {/* Expandable AI Chat Panel */}
       {isOpen && (
-        <div className="w-[350px] sm:w-[400px] h-[520px] gold-card bg-white border-2 border-amber-400 shadow-2xl rounded-2xl flex flex-col justify-between overflow-hidden animate-slide-up">
+        <div className="w-[calc(100vw-24px)] sm:w-[400px] max-w-[400px] h-[75vh] sm:h-[520px] max-h-[560px] gold-card bg-white border-2 border-amber-400 shadow-2xl rounded-2xl flex flex-col justify-between overflow-hidden animate-slide-up">
           
           {/* Header */}
           <div className="bg-gradient-to-r from-amber-900 via-amber-950 to-stone-900 text-white p-3.5 flex items-center justify-between shadow-md">

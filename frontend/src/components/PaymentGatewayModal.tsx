@@ -189,14 +189,14 @@ export const PaymentGatewayModal: React.FC<Props> = ({
   const seconds = countdown % 60;
 
   return (
-    <div className="fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-slide-up select-none">
-      <div className="bg-stone-50 border-2 border-amber-400/90 rounded-3xl p-6 w-full max-w-lg space-y-5 shadow-2xl relative text-stone-900">
+    <div className="fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-slide-up select-none">
+      <div className="bg-stone-50 border-2 border-amber-400/90 rounded-3xl p-4 sm:p-6 w-full max-w-lg space-y-4 sm:space-y-5 shadow-2xl relative text-stone-900 max-h-[92vh] overflow-y-auto">
         
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-amber-200">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-600 to-amber-700 text-white flex items-center justify-center font-bold shadow-md shadow-amber-600/20">
-              <Zap className="w-5 h-5 fill-amber-200 text-amber-200" />
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-amber-600 to-amber-700 text-white flex items-center justify-center font-bold shadow-md shadow-amber-600/20 shrink-0">
+              <Zap className="w-4 h-4 sm:w-5 sm:h-5 fill-amber-200 text-amber-200" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -208,26 +208,26 @@ export const PaymentGatewayModal: React.FC<Props> = ({
                   FREE TEST SANDBOX
                 </span>
               </div>
-              <h3 className="text-sm font-extrabold text-amber-950 mt-0.5">{description}</h3>
+              <h3 className="text-xs sm:text-sm font-extrabold text-amber-950 mt-0.5 line-clamp-1">{description}</h3>
             </div>
           </div>
           <button 
             onClick={onClose} 
-            className="text-stone-400 hover:text-stone-800 p-1.5 rounded-xl hover:bg-stone-200 transition-all cursor-pointer"
+            className="text-stone-400 hover:text-stone-800 p-1.5 rounded-xl hover:bg-stone-200 transition-all cursor-pointer shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Amount Banner */}
-        <div className="bg-gradient-to-r from-amber-900 via-amber-950 to-amber-900 p-4 rounded-2xl border border-amber-700/60 flex items-center justify-between font-mono text-amber-100 shadow-md">
+        <div className="bg-gradient-to-r from-amber-900 via-amber-950 to-amber-900 p-3 sm:p-4 rounded-2xl border border-amber-700/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 font-mono text-amber-100 shadow-md">
           <div>
             <span className="text-[10px] uppercase text-amber-300/90 block font-bold tracking-wider">Total Amount Payable</span>
-            <span className="text-2xl font-black text-white tracking-tight">₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+            <span className="text-xl sm:text-2xl font-black text-white tracking-tight">₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
           </div>
-          <div className="text-right text-[11px] text-amber-200">
-            <div>Order ID: <strong className="text-white">{orderId || 'Generating...'}</strong></div>
-            <div className="text-amber-400 flex items-center gap-1 justify-end font-bold text-[10px] mt-0.5">
+          <div className="text-left sm:text-right text-[10px] sm:text-[11px] text-amber-200">
+            <div>Order ID: <strong className="text-white font-mono">{orderId || 'Generating...'}</strong></div>
+            <div className="text-amber-400 flex items-center gap-1 sm:justify-end font-bold text-[10px] mt-0.5">
               <Lock className="w-3 h-3" /> 256-Bit SSL Encrypted
             </div>
           </div>
@@ -241,7 +241,7 @@ export const PaymentGatewayModal: React.FC<Props> = ({
         )}
 
         {/* Gateway Switcher Tabs */}
-        <div className="grid grid-cols-4 gap-1.5 bg-amber-100/60 p-1.5 rounded-2xl border border-amber-200 text-[11px] font-bold">
+        <div className="grid grid-cols-4 gap-1 sm:gap-1.5 bg-amber-100/60 p-1 sm:p-1.5 rounded-2xl border border-amber-200 text-[9px] sm:text-[11px] font-bold">
           <button
             onClick={() => setTab('RAZORPAY_UPI')}
             className={`py-2 rounded-xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
@@ -249,7 +249,7 @@ export const PaymentGatewayModal: React.FC<Props> = ({
             }`}
           >
             <QrCode className="w-4 h-4" />
-            <span>Razorpay UPI</span>
+            <span className="truncate max-w-full">UPI QR</span>
           </button>
 
           <button

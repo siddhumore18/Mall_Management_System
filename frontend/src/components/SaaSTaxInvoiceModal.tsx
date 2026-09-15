@@ -51,21 +51,21 @@ export const SaaSTaxInvoiceModal: React.FC<Props> = ({ isOpen, onClose, tenant }
 
   return (
     <div className="fixed inset-0 bg-stone-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 md:p-6 overflow-y-auto animate-fadeIn">
-      <div className="bg-white max-w-3xl w-full rounded-3xl border border-amber-300 shadow-2xl overflow-hidden text-stone-900 my-auto">
+      <div className="bg-white max-w-3xl w-full rounded-3xl border border-amber-300 shadow-2xl overflow-hidden text-stone-900 my-auto max-h-[92vh] flex flex-col">
         
         {/* Top Action Toolbar (Hidden when printing) */}
-        <div className="px-6 py-3.5 bg-gradient-to-r from-amber-500 to-amber-700 text-white flex items-center justify-between print:hidden">
+        <div className="px-4 sm:px-6 py-3 sm:py-3.5 bg-gradient-to-r from-amber-500 to-amber-700 text-white flex items-center justify-between print:hidden shrink-0">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-amber-200" />
-            <span className="font-extrabold text-sm tracking-tight">Official GST Tax Invoice • SaaS Subscription</span>
+            <span className="font-extrabold text-xs sm:text-sm tracking-tight truncate">Official GST Tax Invoice • SaaS Subscription</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handlePrint}
-              className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 transition cursor-pointer"
+              className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>Print / Save PDF</span>
+              <span className="hidden sm:inline">Print / Save PDF</span>
             </button>
             <button
               onClick={onClose}
@@ -77,7 +77,7 @@ export const SaaSTaxInvoiceModal: React.FC<Props> = ({ isOpen, onClose, tenant }
         </div>
 
         {/* Printable Invoice Container */}
-        <div id="saas-tax-invoice-content" className="p-6 md:p-10 space-y-6 text-stone-800 bg-white">
+        <div id="saas-tax-invoice-content" className="p-4 sm:p-6 md:p-10 space-y-6 text-stone-800 bg-white overflow-y-auto flex-1">
           
           {/* Header & Logo */}
           <div className="flex flex-col sm:flex-row justify-between items-start gap-4 border-b-2 border-stone-200 pb-6">
@@ -145,8 +145,8 @@ export const SaaSTaxInvoiceModal: React.FC<Props> = ({ isOpen, onClose, tenant }
           </div>
 
           {/* Line Items Table */}
-          <div className="border border-stone-200 rounded-2xl overflow-hidden">
-            <table className="w-full text-left text-xs">
+          <div className="border border-stone-200 rounded-2xl overflow-x-auto">
+            <table className="w-full text-left text-xs min-w-[500px]">
               <thead className="bg-stone-100 text-stone-700 uppercase font-extrabold text-[10px] border-b border-stone-200">
                 <tr>
                   <th className="p-3">#</th>

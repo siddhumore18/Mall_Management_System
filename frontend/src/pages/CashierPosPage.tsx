@@ -760,21 +760,21 @@ TOTAL AMOUNT PAID : ₹${data.total.toFixed(2)}
 
     return (
       <div className="space-y-6">
-        <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-amber-200/80 shadow-xs">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl border border-amber-200/80 shadow-xs">
           <div>
             <h2 className="font-extrabold text-amber-950 text-base">Customer Bills & Thermal Reprint</h2>
             <p className="text-xs text-stone-500">Search customer receipts by Invoice ID or Mobile Number to reprint bill.</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
             <button
               onClick={refreshBillsHistory}
               title="Refresh from server"
-              className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-xl transition cursor-pointer border border-amber-200 flex items-center gap-1.5 text-xs font-bold"
+              className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-xl transition cursor-pointer border border-amber-200 flex items-center gap-1.5 text-xs font-bold shrink-0"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              <span>Refresh</span>
+              <span className="hidden sm:inline">Refresh</span>
             </button>
-            <div className="w-72 relative">
+            <div className="w-full sm:w-72 relative">
               <Search className="w-4 h-4 text-stone-400 absolute left-3 top-2.5" />
               <input
                 value={historySearch}
@@ -815,6 +815,7 @@ TOTAL AMOUNT PAID : ₹${data.total.toFixed(2)}
               <p className="text-xs text-stone-400 mt-1">Complete a checkout transaction to record customer invoices here.</p>
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-amber-50/80 text-amber-950 uppercase font-extrabold text-[10px] border-b border-amber-200">
                 <tr>
@@ -849,13 +850,14 @@ TOTAL AMOUNT PAID : ₹${data.total.toFixed(2)}
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
 
         {/* Modal for reprinting history bill */}
         {selectedBillForPrint && (
-          <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="bg-white max-w-sm w-full p-6 rounded-2xl border-2 border-stone-800 shadow-2xl font-mono text-xs text-stone-900 space-y-4">
+          <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
+            <div className="bg-white max-w-sm w-full p-4 sm:p-6 rounded-2xl border-2 border-stone-800 shadow-2xl font-mono text-xs text-stone-900 space-y-4 max-h-[90vh] overflow-y-auto">
               <div className="text-center border-b border-dashed border-stone-400 pb-3">
                 <h3 className="font-extrabold text-sm uppercase">MEGAMART SUPERMARKET</h3>
                 <p className="text-[10px] text-stone-500">GSTIN: 27AAAAA0000A1Z5</p>
@@ -947,8 +949,8 @@ TOTAL AMOUNT PAID : ₹${data.total.toFixed(2)}
   return (
     <div className="space-y-4 select-none">
       
-      {/* Keyboard Shortcut Hints Bar */}
-      <div className="bg-amber-950 text-amber-100 px-4 py-2 rounded-xl text-[11px] font-mono flex items-center justify-between shadow-xs">
+      {/* Keyboard Shortcut Hints Bar (Desktop Only) */}
+      <div className="hidden md:flex bg-amber-950 text-amber-100 px-4 py-2 rounded-xl text-[11px] font-mono items-center justify-between shadow-xs">
         <div className="flex items-center gap-2">
           <Keyboard className="w-4 h-4 text-amber-400" />
           <span className="font-extrabold uppercase text-[10px] tracking-wider text-amber-400">Cashier Shortcuts:</span>
@@ -963,12 +965,12 @@ TOTAL AMOUNT PAID : ₹${data.total.toFixed(2)}
       </div>
 
       {/* Real-Life Workflow Step 1: Customer Phone Search Bar */}
-      <div className={`p-4 rounded-2xl transition-all ${
+      <div className={`p-3 sm:p-4 rounded-2xl transition-all ${
         !activeCustomer 
           ? 'bg-amber-100/90 border-2 border-amber-500 shadow-md ring-4 ring-amber-500/10' 
           : 'bg-gradient-to-r from-amber-50 via-amber-100/60 to-amber-50 border border-amber-300 shadow-xs'
       }`}>
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sm:gap-4">
           
           <div className="flex items-center gap-3 w-full md:w-auto">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-md ${
@@ -1342,7 +1344,7 @@ TOTAL AMOUNT PAID : ₹${data.total.toFixed(2)}
         </div>
 
         {/* Right Column: Customer Bill Summary & Cart Items (5 Cols) */}
-        <div className="md:col-span-5 gold-card p-4 flex flex-col justify-between h-[640px]">
+        <div id="cashier-pos-cart-summary" className="md:col-span-5 gold-card p-4 flex flex-col justify-between min-h-[460px] md:h-[640px]">
           
           <div className="space-y-3 flex-1 overflow-hidden flex flex-col">
             <div className="flex justify-between items-center border-b border-amber-200 pb-2">
@@ -1491,6 +1493,30 @@ TOTAL AMOUNT PAID : ₹${data.total.toFixed(2)}
 
       </div>
 
+      {/* Mobile Floating Sticky Cart Summary & Checkout Quick-Access Bar */}
+      {cart.length > 0 && (
+        <div className="md:hidden fixed bottom-3 left-3 right-3 z-40 bg-stone-950 text-white p-3 rounded-2xl shadow-2xl border-2 border-amber-400 flex items-center justify-between animate-slide-up">
+          <div>
+            <div className="text-[10px] text-amber-300 font-bold uppercase tracking-wider">
+              {cart.reduce((a, b) => a + b.quantity, 0)} Items in Cart
+            </div>
+            <div className="text-sm font-black text-white">
+              ₹{getTotalAmount().toFixed(2)}
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              const el = document.getElementById('cashier-pos-cart-summary');
+              el?.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="gold-button-primary px-3.5 py-1.5 rounded-xl text-xs font-black cursor-pointer flex items-center gap-1 shadow-md"
+          >
+            <span>View Bill / Pay</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Split Payment Modal */}
       {isPaymentGatewayOpen && (
         <PaymentGatewayModal
@@ -1506,8 +1532,8 @@ TOTAL AMOUNT PAID : ₹${data.total.toFixed(2)}
 
       {/* Thermal Receipt Print Modal on Payment Completion */}
       {trxSuccessModal && (
-        <div className="fixed inset-0 bg-stone-900/75 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-slide-up receipt-modal-backdrop">
-          <div className="bg-white max-w-lg w-full p-6 md:p-8 rounded-3xl border-2 border-amber-500 shadow-2xl font-mono text-xs text-stone-900 space-y-4 print-area print:rounded-none print:border-none print:shadow-none print:w-full print:max-w-full">
+        <div className="fixed inset-0 bg-stone-900/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 z-50 animate-slide-up receipt-modal-backdrop">
+          <div className="bg-white max-w-lg w-full p-4 sm:p-6 md:p-8 rounded-3xl border-2 border-amber-500 shadow-2xl font-mono text-xs text-stone-900 space-y-4 max-h-[90vh] overflow-y-auto print-area print:rounded-none print:border-none print:shadow-none print:w-full print:max-w-full">
             
             <div className="text-center border-b-2 border-dashed border-stone-400 pb-4">
               <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center mx-auto mb-2 font-black shadow-xs no-print">
@@ -1601,8 +1627,8 @@ TOTAL AMOUNT PAID : ₹${data.total.toFixed(2)}
 
       {/* Parked / Held Bills Recall Modal */}
       {isParkedModalOpen && (
-        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-slide-up">
-          <div className="bg-white max-w-md w-full p-5 rounded-2xl border-2 border-amber-400 shadow-2xl space-y-4">
+        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50 animate-slide-up">
+          <div className="bg-white max-w-md w-full p-4 sm:p-5 rounded-2xl border-2 border-amber-400 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-amber-200 pb-2">
               <h3 className="font-extrabold text-amber-950 text-sm">Parked / Held Customer Bills</h3>
               <button onClick={() => setIsParkedModalOpen(false)} className="text-stone-400 hover:text-stone-700 font-bold">✕</button>
@@ -1641,8 +1667,8 @@ TOTAL AMOUNT PAID : ₹${data.total.toFixed(2)}
       )}
       {/* Expired Goods Sale Block Warning Modal */}
       {expiredBlockItem && (
-        <div className="fixed inset-0 bg-stone-900/75 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full border-4 border-rose-600 shadow-2xl space-y-4 text-center animate-slide-up">
+        <div className="fixed inset-0 bg-stone-900/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-3xl p-4 sm:p-6 max-w-md w-full border-4 border-rose-600 shadow-2xl space-y-4 text-center animate-slide-up max-h-[90vh] overflow-y-auto">
             <div className="w-16 h-16 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center mx-auto shadow-inner">
               <ShieldAlert className="w-10 h-10 animate-bounce" />
             </div>

@@ -11,7 +11,7 @@ import {
   Search, RotateCcw, AlertTriangle, Printer,
   DollarSign, PieChart, UserCheck,
   Activity, CreditCard, Sliders, ArrowLeftRight,
-  Gift, Wallet, ShieldAlert, History, ClipboardCheck
+  Gift, Wallet, ShieldAlert, History, ClipboardCheck, X
 } from 'lucide-react';
 
 interface NavItem {
@@ -100,41 +100,40 @@ const roleNavConfig: Record<Role, { title: string; subtitle: string; sections: {
     subtitle: 'Checkout Station',
     sections: [
       {
-        label: 'POS & Billing',
+        label: 'POS Register',
         items: [
-          { id: 'pos', label: 'Checkout Terminal', icon: ShoppingBag },
+          { id: 'checkout', label: 'POS Register (F2)', icon: Receipt },
+          { id: 'customers', label: 'Customer CRM', icon: Users },
           { id: 'history', label: 'Customer Bills & Reprint', icon: History },
-          { id: 'customers', label: 'Unique Customers & History', icon: Users },
         ]
       }
     ]
   },
   CUSTOMER_SERVICE: {
-    title: 'Service Desk',
-    subtitle: 'Returns & Support',
+    title: 'Support Desk',
+    subtitle: 'Client Retention',
     sections: [
       {
-        label: 'Service & CRM',
+        label: 'Care Desk',
         items: [
-          { id: 'crm', label: 'Customer CRM & Loyalty', icon: Users },
-          { id: 'receipts', label: 'Receipt Lookup', icon: Search },
-          { id: 'refunds', label: 'Exchange / Refund', icon: RotateCcw },
-          { id: 'exceptions', label: 'Exception Log', icon: AlertTriangle },
+          { id: 'directory', label: 'Customer Directory', icon: Users },
+          { id: 'returns', label: 'Returns & Exchange', icon: RotateCcw },
+          { id: 'loyalty', label: 'Loyalty Points Desk', icon: Gift },
         ]
       }
     ]
   },
   INVENTORY_CLERK: {
-    title: 'Warehouse Ops',
-    subtitle: 'Stock & Logistics',
+    title: 'Warehouse & FEFO',
+    subtitle: 'Supply Logistics',
     sections: [
       {
-        label: 'Warehouse',
+        label: 'Inventory',
         items: [
-          { id: 'fefo', label: 'FEFO Auditor', icon: Boxes },
-          { id: 'receiving', label: 'Goods Receiving', icon: Truck },
-          { id: 'reconciliation', label: 'Physical Stock Audit', icon: ClipboardCheck },
-          { id: 'barcode', label: 'Barcode Printer', icon: Printer },
+          { id: 'receiving', label: 'Goods Receiving (GRN)', icon: Truck },
+          { id: 'barcode', label: 'Barcode Label Printing', icon: Printer },
+          { id: 'fefo', label: 'FEFO Expiry Auditor', icon: Boxes },
+          { id: 'reconciliation', label: 'Physical Stock Count', icon: ClipboardCheck },
         ]
       }
     ]
@@ -148,7 +147,7 @@ interface Props {
 
 export const RoleSidebar: React.FC<Props> = ({ collapsed, setCollapsed }) => {
   const { user, activeRole, logout, setPinLocked } = useAuthStore();
-  const { activeNavItem, setActiveNavItem } = useNavStore();
+  const { activeNavItem, setActiveNavItem, isMobileMenuOpen, setIsMobileMenuOpen } = useNavStore();
 
   const config = roleNavConfig[activeRole] || roleNavConfig.TENANT_ADMIN;
 
@@ -160,42 +159,64 @@ export const RoleSidebar: React.FC<Props> = ({ collapsed, setCollapsed }) => {
   }, [activeRole]);
 
   return (
-    <aside className={`bg-white border-r border-amber-200/80 h-screen flex flex-col transition-all duration-300 z-40 select-none shadow-[4px_0_20px_-4px_rgba(217,119,6,0.04)] ${
-      collapsed ? 'w-16' : 'w-64'
-    }`}>
-      {/* Branding Header */}
-      <div className={`h-14 border-b border-amber-200/80 flex items-center bg-white ${
-        collapsed ? 'justify-center px-2' : 'justify-between px-3.5'
-      }`}>
-        {collapsed ? (
-          <button
-            onClick={() => setCollapsed(false)}
-            className="w-10 h-10 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 flex items-center justify-center transition-all cursor-pointer border border-amber-200/80 shadow-2xs group"
-            title="Expand Sidebar"
-          >
-            <ChevronRight className="w-5 h-5 text-amber-800 transition-transform group-hover:translate-x-0.5" />
-          </button>
-        ) : (
-          <>
-            <div className="flex items-center gap-2.5 overflow-hidden">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 flex items-center justify-center text-white shrink-0 shadow-md shadow-amber-500/20">
-                <Crown className="w-4 h-4 text-white" />
-              </div>
-              <div className="truncate">
-                <span className="font-extrabold text-xs text-stone-900 tracking-tight block leading-none">MEGAMART<span className="text-amber-600">.GOLD</span></span>
-                <span className="text-[10px] text-amber-700/80 font-semibold">{config.subtitle}</span>
-              </div>
-            </div>
+    <>
+      {/* Mobile Drawer Backdrop Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-stone-950/60 backdrop-blur-xs z-40 md:hidden animate-fade-in"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      <aside className={`bg-white border-r border-amber-200/80 h-screen flex flex-col transition-all duration-300 select-none shadow-[4px_0_20px_-4px_rgba(217,119,6,0.04)]
+        fixed inset-y-0 left-0 z-50 md:static md:translate-x-0
+        ${isMobileMenuOpen ? 'translate-x-0 w-72 shadow-2xl' : '-translate-x-full md:translate-x-0'}
+        ${collapsed ? 'md:w-16' : 'md:w-64'}
+      `}>
+        {/* Branding Header */}
+        <div className={`h-14 border-b border-amber-200/80 flex items-center bg-white ${
+          collapsed ? 'justify-center px-2' : 'justify-between px-3.5'
+        }`}>
+          {collapsed ? (
             <button
-              onClick={() => setCollapsed(true)}
-              className="p-1.5 rounded-lg text-stone-400 hover:text-amber-900 hover:bg-amber-50 transition-colors cursor-pointer"
-              title="Collapse Sidebar"
+              onClick={() => setCollapsed(false)}
+              className="hidden md:flex w-10 h-10 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 items-center justify-center transition-all cursor-pointer border border-amber-200/80 shadow-2xs group"
+              title="Expand Sidebar"
             >
-              <ChevronRight className="w-4 h-4 rotate-180 transition-transform duration-200" />
+              <ChevronRight className="w-5 h-5 text-amber-800 transition-transform group-hover:translate-x-0.5" />
             </button>
-          </>
-        )}
-      </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-2.5 overflow-hidden">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 flex items-center justify-center text-white shrink-0 shadow-md shadow-amber-500/20">
+                  <Crown className="w-4 h-4 text-white" />
+                </div>
+                <div className="truncate">
+                  <span className="font-extrabold text-xs text-stone-900 tracking-tight block leading-none">MEGAMART<span className="text-amber-600">.GOLD</span></span>
+                  <span className="text-[10px] text-amber-700/80 font-semibold">{config.subtitle}</span>
+                </div>
+              </div>
+              
+              {/* Desktop Collapse Button */}
+              <button
+                onClick={() => setCollapsed(true)}
+                className="hidden md:block p-1.5 rounded-lg text-stone-400 hover:text-amber-900 hover:bg-amber-50 transition-colors cursor-pointer"
+                title="Collapse Sidebar"
+              >
+                <ChevronRight className="w-4 h-4 rotate-180 transition-transform duration-200" />
+              </button>
+
+              {/* Mobile Drawer Close Button */}
+              <button
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="md:hidden p-1.5 rounded-xl text-stone-500 hover:text-amber-950 hover:bg-amber-100/70 transition-colors cursor-pointer border border-amber-200/80"
+                title="Close Navigation"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </>
+          )}
+        </div>
 
       {/* Role Badge */}
       {!collapsed && (
@@ -318,5 +339,6 @@ export const RoleSidebar: React.FC<Props> = ({ collapsed, setCollapsed }) => {
         )}
       </div>
     </aside>
+    </>
   );
 };

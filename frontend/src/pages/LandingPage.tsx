@@ -199,28 +199,28 @@ export const LandingPage: React.FC<Props> = ({ onNavigateLogin }) => {
       <div className="absolute top-1/3 right-10 w-[500px] h-[300px] bg-amber-300/20 blur-[100px] rounded-full pointer-events-none z-0"></div>
 
       {/* SaaS Header Nav */}
-      <nav className="h-16 border-b border-stone-200/80 px-6 md:px-12 flex items-center justify-between bg-white/90 backdrop-blur-xl sticky top-0 z-40 shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-600 flex items-center justify-center text-white font-black shadow-md shadow-amber-500/20">
+      <nav className="h-16 border-b border-stone-200/80 px-3 sm:px-6 md:px-12 flex items-center justify-between bg-white/90 backdrop-blur-xl sticky top-0 z-40 shadow-xs">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-600 flex items-center justify-center text-white font-black shadow-md shadow-amber-500/20 shrink-0">
             <Building2 className="w-5 h-5 text-white" />
           </div>
-          <div>
-            <span className="font-black text-base tracking-tight text-amber-950 block leading-none">MEGAMART<span className="text-amber-600">.OS</span></span>
-            <span className="text-[10px] font-medium text-stone-500">Enterprise Retail SaaS</span>
+          <div className="truncate">
+            <span className="font-black text-sm sm:text-base tracking-tight text-amber-950 block leading-none">MEGAMART<span className="text-amber-600">.OS</span></span>
+            <span className="text-[9px] sm:text-[10px] font-medium text-stone-500">Enterprise Retail SaaS</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <button
             onClick={onNavigateLogin}
-            className="text-xs font-bold text-amber-950 bg-amber-100/80 hover:bg-amber-200/80 border border-amber-300/80 px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+            className="text-xs font-bold text-amber-950 bg-amber-100/80 hover:bg-amber-200/80 border border-amber-300/80 px-3 sm:px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
           >
             <LogIn className="w-4 h-4 text-amber-700" />
-            <span>Admin / Staff Login</span>
+            <span><span className="hidden sm:inline">Admin / Staff </span>Login</span>
           </button>
           <button
             onClick={() => handleOpenSubscribe(1, 'Enterprise Hyper-Scale', 39999, 31999, 50, 500)}
-            className="gold-button-primary text-xs px-4 py-2.5 rounded-xl cursor-pointer flex items-center gap-1.5"
+            className="hidden sm:flex gold-button-primary text-xs px-4 py-2.5 rounded-xl cursor-pointer items-center gap-1.5"
           >
             <span>Start Free Trial</span>
             <ChevronRight className="w-3.5 h-3.5" />
@@ -417,11 +417,11 @@ export const LandingPage: React.FC<Props> = ({ onNavigateLogin }) => {
 
       {/* Registration Modal / Inline Form if Plan Selected */}
       {selectedPlan && (
-        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-slide-up">
-          <div className="gold-card max-w-md w-full p-6 space-y-4 shadow-2xl relative">
+        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50 animate-slide-up">
+          <div className="gold-card max-w-md w-full p-4 sm:p-6 space-y-4 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setSelectedPlan(null)}
-              className="absolute top-4 right-4 text-stone-400 hover:text-stone-700 font-bold text-sm cursor-pointer"
+              className="absolute top-3 right-3 sm:top-4 sm:right-4 text-stone-400 hover:text-stone-700 font-bold text-sm cursor-pointer p-1"
             >
               ✕
             </button>

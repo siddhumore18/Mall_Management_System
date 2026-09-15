@@ -960,8 +960,8 @@ export const SuperAdminPage: React.FC = () => {
 
       {/* Quota Modal */}
       {isQuotaModalOpen && (
-        <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="gold-card max-w-sm w-full p-6 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50">
+          <div className="gold-card max-w-sm w-full p-4 sm:p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
             <h3 className="font-black text-amber-950 text-sm">Update Tenant Allocation Quota</h3>
             <form onSubmit={handleSaveQuota} className="space-y-3">
               <div>
@@ -983,8 +983,8 @@ export const SuperAdminPage: React.FC = () => {
 
       {/* Register Tenant Modal */}
       {isAddTenantOpen && (
-        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-slide-up">
-          <div className="gold-card max-w-md w-full p-6 space-y-4 bg-white border-2 border-amber-300 shadow-2xl">
+        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-slide-up">
+          <div className="gold-card max-w-md w-full p-4 sm:p-6 space-y-4 bg-white border-2 border-amber-300 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-amber-200 pb-2">
               <h3 className="font-extrabold text-amber-950 text-sm flex items-center gap-1.5">
                 <Building2 className="w-4 h-4 text-amber-700" />
@@ -1052,8 +1052,8 @@ export const SuperAdminPage: React.FC = () => {
 
       {/* ─── EDIT / CREATE SUBSCRIPTION PLAN MODAL ─── */}
       {isEditPlanOpen && (
-        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-slide-up">
-          <div className="gold-card max-w-md w-full p-6 space-y-4 bg-white border-2 border-amber-300 shadow-2xl">
+        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-slide-up">
+          <div className="gold-card max-w-md w-full p-4 sm:p-6 space-y-4 bg-white border-2 border-amber-300 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-amber-200 pb-2">
               <h3 className="font-extrabold text-amber-950 text-sm flex items-center gap-1.5">
                 <CreditCard className="w-4 h-4 text-amber-700" />
@@ -1144,8 +1144,8 @@ export const SuperAdminPage: React.FC = () => {
 
       {/* ─── CHANGE SUBSCRIPTION PLAN MODAL ─── */}
       {isChangePlanModalOpen && changePlanTenant && (
-        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-slide-up">
-          <div className="bg-white max-w-lg w-full rounded-2xl border-2 border-amber-300 shadow-2xl p-6 space-y-4">
+        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 animate-slide-up">
+          <div className="bg-white max-w-lg w-full rounded-2xl border-2 border-amber-300 shadow-2xl p-4 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-amber-200 pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center text-amber-800 shadow-inner">

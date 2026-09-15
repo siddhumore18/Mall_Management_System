@@ -294,6 +294,7 @@ export const InventoryClerkPage: React.FC = () => {
         </div>
 
         <div className="gold-card overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-amber-50/80 text-amber-950 uppercase font-extrabold text-[10px] border-b border-amber-200">
               <tr>
@@ -334,6 +335,7 @@ export const InventoryClerkPage: React.FC = () => {
               })}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     );
@@ -815,6 +817,7 @@ export const InventoryClerkPage: React.FC = () => {
       </div>
 
       <div className="gold-card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead className="bg-amber-50/80 text-amber-950 uppercase font-extrabold text-[10px] border-b border-amber-200">
             <tr>
@@ -839,6 +842,7 @@ export const InventoryClerkPage: React.FC = () => {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
@@ -901,6 +905,7 @@ export const InventoryClerkPage: React.FC = () => {
       </div>
 
       <div className="gold-card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead className="bg-amber-50/80 text-amber-950 uppercase font-extrabold text-[10px] border-b border-amber-200">
             <tr>
@@ -939,6 +944,7 @@ export const InventoryClerkPage: React.FC = () => {
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
@@ -960,8 +966,8 @@ export const InventoryClerkPage: React.FC = () => {
 
       {/* ─── MODAL: PRINTABLE BARCODE LABEL PREVIEW MODAL ─── */}
       {isPrintModalOpen && printProduct && (
-        <div className="fixed inset-0 bg-stone-900/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 receipt-modal-backdrop animate-slide-up">
-          <div className="gold-card max-w-md w-full p-6 space-y-4 bg-white text-stone-900 font-mono text-xs border-2 border-amber-300 shadow-2xl relative">
+        <div className="fixed inset-0 bg-stone-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 receipt-modal-backdrop animate-slide-up">
+          <div className="gold-card max-w-md w-full p-4 sm:p-6 space-y-4 bg-white text-stone-900 font-mono text-xs border-2 border-amber-300 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setIsPrintModalOpen(false)}
               className="no-print absolute top-3 right-3 p-1 text-stone-400 hover:text-stone-700 rounded-lg hover:bg-stone-100"

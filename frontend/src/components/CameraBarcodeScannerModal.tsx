@@ -191,19 +191,19 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-stone-900 border border-amber-500/40 text-stone-100 rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-stone-900 border border-amber-500/40 text-stone-100 rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200 max-h-[92vh] overflow-y-auto">
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-amber-900/40 bg-stone-950 flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-amber-900/40 bg-stone-950 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
               <Camera className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-extrabold text-amber-400 text-sm tracking-wide">{title}</h3>
-              <p className="text-[11px] text-amber-200/60 font-medium">
-                {isContinuous ? '⚡ Hands-Free Continuous Mode Active (Camera Stays Open)' : 'Single Scan Mode'}
+              <h3 className="font-extrabold text-amber-400 text-xs sm:text-sm tracking-wide line-clamp-1">{title}</h3>
+              <p className="text-[10px] sm:text-[11px] text-amber-200/60 font-medium">
+                {isContinuous ? '⚡ Hands-Free Continuous Mode Active' : 'Single Scan Mode'}
               </p>
             </div>
           </div>
@@ -212,14 +212,14 @@ export const CameraBarcodeScannerModal: React.FC<CameraBarcodeScannerModalProps>
               stopScanner();
               onClose();
             }}
-            className="w-8 h-8 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-300 flex items-center justify-center transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-300 flex items-center justify-center transition-colors cursor-pointer shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Viewport Container */}
-        <div className="p-6 space-y-4 flex-1 flex flex-col items-center">
+        <div className="p-3 sm:p-6 space-y-3 sm:space-y-4 flex-1 flex flex-col items-center">
           
           {/* Controls Bar */}
           <div className="w-full flex items-center justify-between gap-2 text-xs bg-stone-950 px-3.5 py-2 rounded-xl border border-stone-800">
