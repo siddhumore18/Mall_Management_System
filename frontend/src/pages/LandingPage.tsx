@@ -192,30 +192,32 @@ export const LandingPage: React.FC<Props> = ({ onNavigateLogin }) => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-stone-50 text-stone-900 flex flex-col font-sans select-none relative">
+    <div className="min-h-screen w-full bg-stone-50 text-stone-900 flex flex-col font-sans select-none relative overflow-x-hidden">
       
       {/* Background Ambient Lighting Glow Blobs */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-amber-400/15 blur-[120px] rounded-full pointer-events-none z-0"></div>
-      <div className="absolute top-1/3 right-10 w-[500px] h-[300px] bg-amber-300/20 blur-[100px] rounded-full pointer-events-none z-0"></div>
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] sm:w-[800px] h-[300px] sm:h-[400px] bg-amber-400/15 blur-[90px] sm:blur-[120px] rounded-full"></div>
+        <div className="absolute top-1/3 -right-20 w-[300px] sm:w-[500px] h-[250px] sm:h-[300px] bg-amber-300/20 blur-[80px] sm:blur-[100px] rounded-full"></div>
+      </div>
 
       {/* SaaS Header Nav */}
       <nav className="h-16 border-b border-stone-200/80 px-3 sm:px-6 md:px-12 flex items-center justify-between bg-white/90 backdrop-blur-xl sticky top-0 z-40 shadow-xs">
-        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-600 flex items-center justify-center text-white font-black shadow-md shadow-amber-500/20 shrink-0">
-            <Building2 className="w-5 h-5 text-white" />
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-600 flex items-center justify-center text-white font-black shadow-md shadow-amber-500/20 shrink-0">
+            <Building2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
           </div>
-          <div className="truncate">
+          <div className="truncate min-w-0">
             <span className="font-black text-sm sm:text-base tracking-tight text-amber-950 block leading-none">MEGAMART<span className="text-amber-600">.OS</span></span>
-            <span className="text-[9px] sm:text-[10px] font-medium text-stone-500">Enterprise Retail SaaS</span>
+            <span className="text-[9px] sm:text-[10px] font-medium text-stone-500 truncate block">Enterprise Retail SaaS</span>
           </div>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <button
             onClick={onNavigateLogin}
-            className="text-xs font-bold text-amber-950 bg-amber-100/80 hover:bg-amber-200/80 border border-amber-300/80 px-3 sm:px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+            className="text-xs font-bold text-amber-950 bg-amber-100/80 hover:bg-amber-200/80 border border-amber-300/80 px-2.5 sm:px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
           >
-            <LogIn className="w-4 h-4 text-amber-700" />
+            <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-700 shrink-0" />
             <span><span className="hidden sm:inline">Admin / Staff </span>Login</span>
           </button>
           <button
@@ -229,67 +231,71 @@ export const LandingPage: React.FC<Props> = ({ onNavigateLogin }) => {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative z-10 px-6 pt-16 pb-16 max-w-5xl mx-auto text-center space-y-6">
-        <div className="inline-flex items-center gap-2 bg-amber-100/80 border border-amber-300 text-amber-900 px-4 py-1.5 rounded-full text-xs font-semibold tracking-wide shadow-xs animate-slide-up">
-          <Sparkles className="w-4 h-4 text-amber-600 animate-pulse-glow" />
-          <span>Next-Gen Supermarket SaaS Platform • Multi-Tenant & Zero-Scroll POS</span>
+      <section className="relative z-10 px-4 sm:px-6 pt-8 sm:pt-14 pb-10 sm:pb-16 max-w-5xl mx-auto text-center space-y-4 sm:space-y-6 w-full">
+        <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-amber-100/80 border border-amber-300 text-amber-900 px-3 sm:px-4 py-1.5 rounded-full text-[10px] sm:text-xs font-semibold tracking-wide shadow-xs animate-slide-up max-w-full">
+          <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 animate-pulse-glow shrink-0" />
+          <span className="truncate">Next-Gen Supermarket SaaS • Zero-Scroll POS</span>
         </div>
 
-        <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-stone-900 max-w-4xl mx-auto leading-[1.12]">
-          Hyper-Scale Retail OS for <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-600 via-amber-700 to-amber-900">Modern Supermarkets</span>
+        <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-stone-900 max-w-4xl mx-auto leading-[1.18] sm:leading-[1.12] break-words px-1">
+          Hyper-Scale Retail OS for <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-600 via-amber-700 to-amber-900 inline sm:inline-block">Modern Supermarkets</span>
         </h1>
 
-        <p className="text-sm sm:text-base text-stone-600 max-w-2xl mx-auto font-normal leading-relaxed">
+        <p className="text-xs sm:text-sm md:text-base text-stone-600 max-w-2xl mx-auto font-normal leading-relaxed px-1 sm:px-2">
           Engineered for high-volume retail chains across India. Seamlessly connects customer-first POS terminals, FEFO stock rotation audit, GST tax ledger, and executive analytics.
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3 pt-2 sm:pt-4 w-full max-w-md mx-auto">
           <button
             onClick={onNavigateLogin}
-            className="w-full sm:w-auto gold-button-primary text-sm px-8 py-3.5 rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20"
+            className="w-full sm:w-auto gold-button-primary text-xs sm:text-sm px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20"
           >
-            <LogIn className="w-4.5 h-4.5" />
+            <LogIn className="w-4 h-4 sm:w-4.5 sm:h-4.5 shrink-0" />
             <span>Login to Account</span>
           </button>
           <button
             onClick={() => handleOpenSubscribe(1, 'Enterprise Hyper-Scale', 39999, 31999, 50, 500)}
-            className="w-full sm:w-auto bg-white hover:bg-stone-100 border border-amber-300 text-amber-950 font-bold text-sm px-7 py-3.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs"
+            className="w-full sm:w-auto bg-white hover:bg-stone-100 border border-amber-300 text-amber-950 font-bold text-xs sm:text-sm px-5 sm:px-7 py-3 sm:py-3.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs"
           >
             <span>Deploy Enterprise SaaS Chain</span>
-            <ArrowRight className="w-4 h-4 text-amber-600" />
+            <ArrowRight className="w-4 h-4 text-amber-600 shrink-0" />
           </button>
         </div>
 
         {/* Dynamic Metric Badges */}
-        <div className="pt-8 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto text-xs">
-          <div className="gold-card p-4 text-center">
-            <div className="text-amber-800 font-extrabold text-xl">₹48.5L+</div>
-            <div className="text-stone-500 text-[11px] font-medium mt-1">Daily Sales Processed</div>
+        <div className="pt-6 sm:pt-8 grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4 max-w-3xl mx-auto text-xs w-full">
+          <div className="gold-card p-2.5 sm:p-4 text-center min-w-0">
+            <div className="text-amber-800 font-extrabold text-base sm:text-xl font-mono">₹48.5L+</div>
+            <div className="text-stone-500 text-[10px] sm:text-[11px] font-medium mt-0.5 sm:mt-1 truncate">Daily Sales</div>
           </div>
-          <div className="gold-card p-4 text-center">
-            <div className="text-amber-800 font-extrabold text-xl">50+</div>
-            <div className="text-stone-500 text-[11px] font-medium mt-1">Active Supermarket Outlets</div>
+          <div className="gold-card p-2.5 sm:p-4 text-center min-w-0">
+            <div className="text-amber-800 font-extrabold text-base sm:text-xl font-mono">50+</div>
+            <div className="text-stone-500 text-[10px] sm:text-[11px] font-medium mt-0.5 sm:mt-1 truncate">Active Outlets</div>
           </div>
-          <div className="gold-card p-4 text-center">
-            <div className="text-amber-800 font-extrabold text-xl">&lt; 50ms</div>
-            <div className="text-stone-500 text-[11px] font-medium mt-1">POS Barcode Scan Speed</div>
+          <div className="gold-card p-2.5 sm:p-4 text-center min-w-0">
+            <div className="text-amber-800 font-extrabold text-base sm:text-xl font-mono">&lt; 50ms</div>
+            <div className="text-stone-500 text-[10px] sm:text-[11px] font-medium mt-0.5 sm:mt-1 truncate">POS Scan Speed</div>
           </div>
-          <div className="gold-card p-4 text-center">
-            <div className="text-amber-800 font-extrabold text-xl">99.99%</div>
-            <div className="text-stone-500 text-[11px] font-medium mt-1">SaaS Uptime SLA</div>
+          <div className="gold-card p-2.5 sm:p-4 text-center min-w-0">
+            <div className="text-amber-800 font-extrabold text-base sm:text-xl font-mono">99.99%</div>
+            <div className="text-stone-500 text-[10px] sm:text-[11px] font-medium mt-0.5 sm:mt-1 truncate">SaaS Uptime SLA</div>
           </div>
         </div>
       </section>
 
       {/* Feature Grid Section */}
-      <section className="relative z-10 px-6 py-12 max-w-6xl mx-auto">
-        <div className="text-center mb-10 space-y-2">
-          <h2 className="text-2xl sm:text-3xl font-black text-amber-950">Architected for Every Retail Stakeholder</h2>
-          <p className="text-xs sm:text-sm text-stone-600 max-w-xl mx-auto">7 completely isolated security boundaries ensuring zero-trust data separation with role-tailored dashboards.</p>
+      <section className="relative z-10 px-4 sm:px-6 py-10 sm:py-12 max-w-6xl mx-auto w-full">
+        <div className="text-center mb-8 sm:mb-10 space-y-2 px-2">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-amber-950 tracking-tight break-words">
+            Architected for Every Retail Stakeholder
+          </h2>
+          <p className="text-xs sm:text-sm text-stone-600 max-w-xl mx-auto leading-relaxed">
+            7 completely isolated security boundaries ensuring zero-trust data separation with role-tailored dashboards.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="gold-card p-6 space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+          <div className="gold-card p-5 sm:p-6 space-y-3">
             <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-300 text-amber-800 flex items-center justify-center font-bold">
               <ShieldCheck className="w-5 h-5" />
             </div>
@@ -297,7 +303,7 @@ export const LandingPage: React.FC<Props> = ({ onNavigateLogin }) => {
             <p className="text-xs text-stone-600 leading-relaxed">SaaS control center tracking platform MRR/ARR, tenant directory, subscription tiers, and system health without viewing tenant private transaction data.</p>
           </div>
 
-          <div className="gold-card p-6 space-y-3">
+          <div className="gold-card p-5 sm:p-6 space-y-3">
             <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-300 text-amber-800 flex items-center justify-center font-bold">
               <Building2 className="w-5 h-5" />
             </div>
@@ -305,7 +311,7 @@ export const LandingPage: React.FC<Props> = ({ onNavigateLogin }) => {
             <p className="text-xs text-stone-600 leading-relaxed">Aggregated performance across physical supermarket locations, outlet revenue analytics, user provisioning, global catalog, and GST compliance.</p>
           </div>
 
-          <div className="gold-card p-6 space-y-3">
+          <div className="gold-card p-5 sm:p-6 space-y-3">
             <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-300 text-amber-800 flex items-center justify-center font-bold">
               <ShoppingBag className="w-5 h-5" />
             </div>
@@ -319,10 +325,12 @@ export const LandingPage: React.FC<Props> = ({ onNavigateLogin }) => {
       <InteractiveProductDemo />
 
       {/* Subscription Plans Section */}
-      <section className="relative z-10 px-6 py-12 max-w-5xl mx-auto">
-        <div className="text-center mb-8 space-y-2">
+      <section className="relative z-10 px-4 sm:px-6 py-10 sm:py-12 max-w-5xl mx-auto w-full">
+        <div className="text-center mb-8 space-y-2 px-2">
           <span className="gold-badge">SaaS Subscriptions</span>
-          <h2 className="text-2xl sm:text-3xl font-black text-amber-950">Transparent Pricing for Supermarket Chains</h2>
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-amber-950 tracking-tight break-words">
+            Transparent Pricing for Supermarket Chains
+          </h2>
           
           <div className="flex items-center justify-center gap-3 pt-3">
             <span className={`text-xs font-semibold ${!isAnnual ? 'text-amber-950' : 'text-stone-500'}`}>Monthly</span>
@@ -501,7 +509,7 @@ export const LandingPage: React.FC<Props> = ({ onNavigateLogin }) => {
 
       {/* Business-Ready Enterprise Compliance Footer */}
       <footer className="mt-auto border-t border-amber-200/80 bg-white text-stone-600 text-xs">
-        <div className="max-w-7xl mx-auto px-6 py-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           
           {/* Column 1: Company Profile & Trust Badges */}
           <div className="space-y-3">
@@ -608,12 +616,12 @@ export const LandingPage: React.FC<Props> = ({ onNavigateLogin }) => {
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-stone-200 py-4 px-6 bg-stone-50/70 text-center text-[11px] text-stone-500 flex flex-col md:flex-row items-center justify-between max-w-7xl mx-auto gap-2">
+        <div className="border-t border-stone-200 py-4 px-4 sm:px-6 bg-stone-50/70 text-center text-[11px] text-stone-500 flex flex-col md:flex-row items-center justify-between max-w-7xl mx-auto gap-3">
           <p>© 2026 MegaMart Retail Technologies Pvt. Ltd. All rights reserved. GSTIN: 27AAAAA0000A1Z5.</p>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
             <span className="text-[10px] text-stone-400">Accepted Gateways:</span>
             <span className="font-bold text-stone-700">Razorpay (UPI / NetBanking)</span>
-            <span>•</span>
+            <span className="hidden sm:inline">•</span>
             <span className="font-bold text-stone-700">Stripe (Visa / Mastercard)</span>
           </div>
         </div>

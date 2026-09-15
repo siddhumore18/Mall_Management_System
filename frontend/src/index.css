@@ -18,6 +18,12 @@
     --radius: 1rem;
   }
 
+  html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+    width: 100%;
+  }
+
   body {
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     @apply bg-[#FAFAF9] text-stone-900 tracking-tight antialiased selection:bg-amber-500 selection:text-white;
